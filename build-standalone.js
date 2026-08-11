@@ -36,7 +36,7 @@ function stripModuleSyntax(src, label) {
 }
 
 const icon = stripModuleSyntax(readFileSync('src/Icon.jsx', 'utf8'), 'Icon.jsx');
-const animLab = stripModuleSyntax(readFileSync('src/AnimatedIconLab.jsx', 'utf8'), 'AnimatedIconLab.jsx');
+const utils = stripModuleSyntax(readFileSync('src/assetUtils.js', 'utf8'), 'assetUtils.js');
 const tester = stripModuleSyntax(readFileSync('src/IconTester.jsx', 'utf8'), 'IconTester.jsx');
 
 /** icon/ 폴더 스캔 — Vite 의 import.meta.glob 을 대신한다 */
@@ -94,8 +94,8 @@ const html = `<!doctype html>
     /* ───── src/Icon.jsx ───── */
 ${indent(icon, 4)}
 
-    /* ───── src/AnimatedIconLab.jsx ───── */
-${indent(animLab, 4)}
+    /* ───── src/assetUtils.js ───── */
+${indent(utils, 4)}
 
     /* ───── src/IconTester.jsx ───── */
 ${indent(tester, 4)}

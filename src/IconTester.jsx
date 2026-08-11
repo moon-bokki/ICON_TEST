@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Icon, { toSvgString } from './Icon';
 import { ICONS } from './icons';
-import AnimatedIconLab, {
+import {
   useAsset,
   formatBytes,
   renderAtSize,
   downloadBlob,
   SIZE_LADDER,
-} from './AnimatedIconLab';
+  BACKGROUNDS,
+} from './assetUtils';
 import { ANIMATED_ICONS } from './animatedIcons';
 
 const ALL_NAMES = Object.keys(ICONS).sort();
@@ -493,17 +494,6 @@ export default function IconTester() {
         </div>
       )}
 
-      {/* ── 사용성 검증 랩 ─────────────────── */}
-      <Lab {...iconProps} />
-
-      {/* ── 컬러 · 애니메이션 아이콘 랩 ────── */}
-      <AnimatedIconLab
-        strokeWidth={strokeWidth}
-        items={assets}
-        onAddFiles={addFiles}
-        onRemove={removeAsset}
-      />
-
       {/* ── 상세 패널 ──────────────────────── */}
       {selected?.type === 'icon' && (
         <DetailPanel
@@ -560,7 +550,8 @@ function DetailPanel({
   const [rotate, setRotate] = useState(0);
   const [flip, setFlip] = useState(null);
   const [spin, setSpin] = useState(false);
-  const [checker, setChecker] = useState(true);
+  const [bg, setBg] = useState('checker');
+  const [customBg, setCustomBg] = useState('#4f46e5');
   const icon = ICONS[name];
 
   useEffect(() => {
@@ -599,7 +590,7 @@ function DetailPanel({
         </div>
 
         <div className="panel-body">
-          <div className={`stage${checker ? '' : ' plain'}`}>
+          <div {...stageProps(bg, customBg)}>
             <Icon
               name={name}
               size={Math.max(size, 72)}
@@ -610,6 +601,15 @@ function DetailPanel({
               spin={spin}
             />
           </div>
+
+          <BgPicker value={bg} custom={customBg} onChange={setBg} onCustom={setCustomBg} />
+
+          {color === 'currentColor' && (
+            <p className="hint bg-note">
+              색상이 <code>currentColor</code> 라 아이콘이 배경의 글자색을 따라갑니다. 고정 색으로
+              보려면 상단 툴바에서 색을 지정하세요.
+            </p>
+          )}
 
           <div className="demo-row" style={{ marginTop: 10 }}>
             <button className="demo-btn sm" onClick={() => setRotate((r) => (r + 90) % 360)}>
@@ -624,9 +624,6 @@ function DetailPanel({
             </button>
             <button className="demo-btn sm" onClick={() => setSpin(!spin)} aria-pressed={spin}>
               <Icon name="loader" size={14} spin={spin} /> 회전 애니메이션
-            </button>
-            <button className="demo-btn sm" onClick={() => setChecker(!checker)}>
-              <Icon name="image" size={14} /> 배경
             </button>
           </div>
 
@@ -675,6 +672,63 @@ function DetailPanel({
       </aside>
     </>
   );
+}
+
+/* ══════════════════════════════════════════
+   미리보기 배경 선택기 (상세 패널 안)
+   프리셋 6종 + 직접 고른 색.
+   currentColor 아이콘은 배경의 글자색을 따라가므로
+   어두운 배경에서도 그대로 보인다.
+   ══════════════════════════════════════════ */
+function BgPicker({ value, custom, onChange, onCustom }) {
+  return (
+    <div className="bg-picker">
+      <div className="seg sm" role="group" aria-label="미리보기 배경">
+        {BACKGROUNDS.map((b) => (
+          <button
+            key={b.id}
+            className="seg-btn"
+            aria-pressed={value === b.id}
+            onClick={() => onChange(b.id)}
+          >
+            {b.label}
+          </button>
+        ))}
+        <button className="seg-btn" aria-pressed={value === 'custom'} onClick={() => onChange('custom')}>
+          직접
+        </button>
+      </div>
+      <input
+        type="color"
+        value={custom}
+        onChange={(e) => {
+          onCustom(e.target.value);
+          onChange('custom');
+        }}
+        title="배경색 직접 선택"
+        aria-label="배경색 직접 선택"
+      />
+    </div>
+  );
+}
+
+/** 배경 밝기에 맞춰 글자색(= currentColor 아이콘 색)을 고른다 */
+function contrastText(hex) {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return '#16191f';
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return luminance > 0.55 ? '#16191f' : '#ffffff';
+}
+
+/** 선택한 배경을 stage 에 입히는 className/style */
+function stageProps(bg, customBg) {
+  if (bg === 'custom') {
+    return { className: 'stage', style: { background: customBg, color: contrastText(customBg) } };
+  }
+  return { className: `stage bg-${bg}` };
 }
 
 /* ══════════════════════════════════════════
@@ -895,7 +949,8 @@ function AssetPanel({
   onRemove,
 }) {
   const [{ status, url, meta, bytes }, restart] = useAsset(item.url, item.blob);
-  const [checker, setChecker] = useState(true);
+  const [bg, setBg] = useState('checker');
+  const [customBg, setCustomBg] = useState('#4f46e5');
   const [natural, setNatural] = useState(null);
 
   const path = `icon/${item.file}`;
@@ -922,7 +977,7 @@ function AssetPanel({
         </div>
 
         <div className="panel-body">
-          <div className={`stage${checker ? '' : ' plain'}`}>
+          <div {...stageProps(bg, customBg)}>
             <img
               src={url}
               alt={item.name}
@@ -933,12 +988,11 @@ function AssetPanel({
             />
           </div>
 
+          <BgPicker value={bg} custom={customBg} onChange={setBg} onCustom={setCustomBg} />
+
           <div className="demo-row" style={{ marginTop: 10 }}>
             <button className="demo-btn sm" onClick={restart}>
               <Icon name="play" size={13} strokeWidth={strokeWidth} /> 처음부터
-            </button>
-            <button className="demo-btn sm" onClick={() => setChecker(!checker)}>
-              <Icon name="image" size={13} strokeWidth={strokeWidth} /> 배경
             </button>
             {onRemove && (
               <button className="demo-btn sm ghost" onClick={onRemove}>
@@ -1005,197 +1059,8 @@ function AssetPanel({
             </p>
           )}
 
-          <p className="hint">
-            자세한 진단(프레임·fps·투명도·용량 경고)은 아래 <b>컬러 · 애니메이션 아이콘</b>{' '}
-            섹션에서 볼 수 있습니다.
-          </p>
         </div>
       </aside>
     </>
-  );
-}
-
-/* ══════════════════════════════════════════
-   사용성 검증 랩
-   실제 UI 안에서 정렬·가독성·대비를 확인
-   ══════════════════════════════════════════ */
-function Lab({ size, strokeWidth, color }) {
-  const p = { strokeWidth, color };
-  return (
-    <section className="lab">
-      <h2>사용성 검증</h2>
-      <p className="lead">
-        실제 UI 맥락에 얹어 정렬·시각 무게·최소 크기 가독성을 확인합니다. 위 툴바의 두께·색상
-        설정이 그대로 반영됩니다.
-      </p>
-
-      <div className="lab-grid">
-        {/* 1. 텍스트 정렬 */}
-        <div className="card">
-          <h3>텍스트 baseline 정렬</h3>
-          {[
-            { fs: 12, s: 14 },
-            { fs: 14, s: 16 },
-            { fs: 16, s: 18 },
-            { fs: 20, s: 24 },
-          ].map(({ fs, s }) => (
-            <div className="align-line" key={fs} style={{ fontSize: fs }}>
-              <Icon name="check-circle" size={s} {...p} />
-              <span>본문 {fs}px 옆에 {s}px 아이콘</span>
-            </div>
-          ))}
-          <div className="hint">
-            아이콘 높이는 보통 글자 크기의 1.15~1.25배일 때 시각적으로 맞습니다.
-          </div>
-        </div>
-
-        {/* 2. 버튼 */}
-        <div className="card">
-          <h3>버튼 · 입력창</h3>
-          <div className="demo-row" style={{ marginBottom: 12 }}>
-            <button className="demo-btn primary">
-              <Icon name="plus" size={16} strokeWidth={strokeWidth} color="#fff" />
-              새로 만들기
-            </button>
-            <button className="demo-btn">
-              <Icon name="download" size={16} {...p} />
-              내려받기
-            </button>
-            <button className="demo-btn ghost">
-              <Icon name="trash" size={16} {...p} />
-              삭제
-            </button>
-            <button className="demo-btn" style={{ width: 36, padding: 0, justifyContent: 'center' }}>
-              <Icon name="more-horizontal" size={16} {...p} />
-            </button>
-          </div>
-          <div className="demo-input">
-            <span className="lead-icon">
-              <Icon name="search" size={16} {...p} />
-            </span>
-            <input placeholder="입력창 안 아이콘 정렬 확인" />
-          </div>
-          <div className="hint">아이콘과 라벨의 광학 중심이 어긋나지 않는지 확인하세요.</div>
-        </div>
-
-        {/* 3. 리스트 */}
-        <div className="card">
-          <h3>리스트 행</h3>
-          <div className="demo-list">
-            {[
-              ['folder', '프로젝트 문서', '폴더 · 12개 항목'],
-              ['file', '기획안-v3.pdf', '2.4 MB'],
-              ['image', '표지-시안.png', '840 KB'],
-              ['lock', '계약서.docx', '보호됨'],
-            ].map(([icon, title, meta]) => (
-              <div className="row" key={title}>
-                <Icon name={icon} size={18} {...p} />
-                <div className="grow">
-                  <div>{title}</div>
-                  <div className="muted">{meta}</div>
-                </div>
-                <Icon name="chevron-right" size={16} strokeWidth={strokeWidth} color="var(--text-faint)" />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 4. 상태 배지 */}
-        <div className="card">
-          <h3>상태 표시</h3>
-          <div className="demo-row" style={{ marginBottom: 14 }}>
-            <span className="badge ok">
-              <Icon name="check-circle" size={13} strokeWidth={strokeWidth} /> 완료
-            </span>
-            <span className="badge warn">
-              <Icon name="alert-triangle" size={13} strokeWidth={strokeWidth} /> 확인 필요
-            </span>
-            <span className="badge err">
-              <Icon name="x-circle" size={13} strokeWidth={strokeWidth} /> 실패
-            </span>
-          </div>
-          <div className="demo-row">
-            <span className="badge ok">
-              <Icon name="loader" size={13} strokeWidth={strokeWidth} spin /> 처리 중
-            </span>
-            <Icon name="loader" size={20} {...p} spin />
-            <Icon name="bell" size={20} {...p} pulse />
-          </div>
-          <div className="hint">13px처럼 작은 크기에서 선이 뭉개지지 않는지 봅니다.</div>
-        </div>
-
-        {/* 5. 크기 × 두께 매트릭스 */}
-        <div className="card" style={{ gridColumn: '1 / -1' }}>
-          <h3>크기 × 두께 매트릭스</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="matrix">
-              <thead>
-                <tr>
-                  <th>두께 \ 크기</th>
-                  {[12, 14, 16, 18, 20, 24, 28, 32, 40, 48].map((s) => (
-                    <th key={s}>{s}px</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[1, 1.25, 1.5, 1.75, 2, 2.5].map((sw) => (
-                  <tr key={sw}>
-                    <td>{sw}</td>
-                    {[12, 14, 16, 18, 20, 24, 28, 32, 40, 48].map((s) => (
-                      <td key={s}>
-                        <span style={{ display: 'inline-flex' }}>
-                          <Icon name="settings" size={s} strokeWidth={sw} color={color} />
-                        </span>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="hint">
-            작은 크기에서 두께가 굵으면 내부 여백이 막힙니다. 16px 이하에서는 1.5 전후를
-            권장합니다.
-          </div>
-        </div>
-
-        {/* 6. 대비 확인 */}
-        <div className="card" style={{ gridColumn: '1 / -1' }}>
-          <h3>배경 대비</h3>
-          <div className="demo-row">
-            {[
-              ['#ffffff', '#16191f', '흰 배경'],
-              ['#f0f2f5', '#16191f', '회색 배경'],
-              ['#16191f', '#ffffff', '검정 배경'],
-              ['#4f46e5', '#ffffff', '브랜드 배경'],
-              ['#fef3c7', '#92400e', '경고 배경'],
-            ].map(([bg, fg, label]) => (
-              <div
-                key={label}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '10px 14px',
-                  borderRadius: 10,
-                  background: bg,
-                  color: fg,
-                  border: '1px solid var(--border)',
-                  fontSize: 12,
-                }}
-              >
-                <Icon name="star" size={Math.min(size, 24)} strokeWidth={strokeWidth} />
-                <Icon name="heart" size={Math.min(size, 24)} strokeWidth={strokeWidth} />
-                <Icon name="zap" size={Math.min(size, 24)} strokeWidth={strokeWidth} />
-                {label}
-              </div>
-            ))}
-          </div>
-          <div className="hint">
-            색상을 <code>currentColor</code>로 두면 위처럼 배경별 글자색을 그대로 따라갑니다.
-          </div>
-        </div>
-      </div>
-    </section>
   );
 }
