@@ -1,0 +1,2046 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>아이콘 컴포넌트 테스터 (standalone)</title>
+  <link rel="stylesheet" href="src/styles/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2' stroke-linecap='round'%3E%3Crect x='4' y='4' width='6.5' height='6.5' rx='1.5'/%3E%3Crect x='13.5' y='4' width='6.5' height='6.5' rx='1.5'/%3E%3Crect x='4' y='13.5' width='6.5' height='6.5' rx='1.5'/%3E%3Crect x='13.5' y='13.5' width='6.5' height='6.5' rx='1.5'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- ⚠ 이 파일은 build-standalone.js 가 생성합니다. 직접 수정하지 마세요.
+       원본: src/ (app · components · data · lib · styles) -->
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script>
+    // CDN 을 못 불러온 경우(오프라인 등) 안내
+    window.addEventListener('load', function () {
+      if (typeof React === 'undefined' || typeof Babel === 'undefined') {
+        document.getElementById('root').innerHTML =
+          '<div style="max-width:640px;margin:80px auto;padding:24px;border:1px solid #e2e5ea;' +
+          'border-radius:12px;font-family:sans-serif;line-height:1.7">' +
+          '<h1 style="font-size:18px;margin:0 0 8px">React CDN 을 불러오지 못했습니다</h1>' +
+          '<p style="margin:0;color:#6b7280">standalone.html 은 unpkg.com 에서 React 와 Babel 을 ' +
+          '내려받습니다. 인터넷 연결을 확인하거나, 사내망이라면 <code>npm install &amp;&amp; npm run dev</code> ' +
+          '로 Vite 버전을 실행해 주세요.</p></div>';
+      }
+    });
+  </script>
+
+  <script type="text/babel" data-presets="react">
+    const { forwardRef, useCallback, useEffect, useMemo, useRef, useState } = React;
+
+    /* ───── src/data/animatedIcons.js 대체 — icon/ 폴더 (빌드 시점에 주입) ───── */
+    const ANIMATED_ICONS = [
+          {
+                "name": "home",
+                "file": "home.gif",
+                "url": "icon/home.gif"
+          },
+          {
+                "name": "map",
+                "file": "map.gif",
+                "url": "icon/map.gif"
+          },
+          {
+                "name": "profile",
+                "file": "profile.gif",
+                "url": "icon/profile.gif"
+          },
+          {
+                "name": "serch",
+                "file": "serch.gif",
+                "url": "icon/serch.gif"
+          },
+          {
+                "name": "serch02",
+                "file": "serch02.gif",
+                "url": "icon/serch02.gif"
+          },
+          {
+                "name": "setting",
+                "file": "setting.gif",
+                "url": "icon/setting.gif"
+          },
+          {
+                "name": "shopping",
+                "file": "shopping.gif",
+                "url": "icon/shopping.gif"
+          },
+          {
+                "name": "test_set_01",
+                "file": "test_set_01.png",
+                "url": "icon/test_set_01.png"
+          }
+    ];
+
+    /* ───── src/data/icons.js ───── */
+    /**
+     * 아이콘 데이터셋
+     * - 24x24 그리드 / 라인(스트로크) 스타일
+     * - fill 은 none, stroke 는 currentColor 로 컴포넌트에서 지정
+     * - body: <svg> 내부 마크업만 저장
+     */
+    const ICONS = {
+      /* ── 인터페이스 ─────────────────────────────── */
+      home: {
+        category: '인터페이스',
+        tags: ['집', '홈', '메인', 'house'],
+        body: '<path d="M4 10.4 12 3.5l8 6.9V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M9.5 21v-6.5h5V21"/>',
+      },
+      menu: {
+        category: '인터페이스',
+        tags: ['메뉴', '햄버거', '네비게이션'],
+        body: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+      },
+      search: {
+        category: '인터페이스',
+        tags: ['검색', '돋보기', '찾기'],
+        body: '<circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-4.2-4.2"/>',
+      },
+      filter: {
+        category: '인터페이스',
+        tags: ['필터', '정렬', '깔때기'],
+        body: '<path d="M3.5 5.5h17l-6.5 7.5v6l-4 2v-8z"/>',
+      },
+      grid: {
+        category: '인터페이스',
+        tags: ['그리드', '격자', '보기'],
+        body: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
+      },
+      list: {
+        category: '인터페이스',
+        tags: ['목록', '리스트', '보기'],
+        body: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>',
+      },
+      'more-horizontal': {
+        category: '인터페이스',
+        tags: ['더보기', '점', '옵션'],
+        body: '<path d="M6 12h.01M12 12h.01M18 12h.01"/>',
+      },
+      settings: {
+        category: '인터페이스',
+        tags: ['설정', '톱니', '환경설정'],
+        body: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+      },
+      sliders: {
+        category: '인터페이스',
+        tags: ['슬라이더', '조절', '옵션'],
+        body: '<path d="M4 8h9M19 8h1M4 16h3M13 16h7"/><circle cx="16" cy="8" r="2.5"/><circle cx="10" cy="16" r="2.5"/>',
+      },
+
+      /* ── 액션 ──────────────────────────────────── */
+      plus: { category: '액션', tags: ['추가', '더하기', '생성'], body: '<path d="M12 5v14M5 12h14"/>' },
+      minus: { category: '액션', tags: ['빼기', '제거'], body: '<path d="M5 12h14"/>' },
+      x: { category: '액션', tags: ['닫기', '취소', '삭제'], body: '<path d="m6 6 12 12M18 6 6 18"/>' },
+      check: { category: '액션', tags: ['체크', '확인', '완료'], body: '<path d="m4.5 12.5 5 5 10-10"/>' },
+      edit: {
+        category: '액션',
+        tags: ['편집', '수정', '연필'],
+        body: '<path d="m4 20 .9-3.9L16.2 4.8a2 2 0 0 1 2.8 0l.2.2a2 2 0 0 1 0 2.8L7.9 19.1z"/><path d="m14.8 6.2 3 3"/>',
+      },
+      trash: {
+        category: '액션',
+        tags: ['삭제', '휴지통', '제거'],
+        body: '<path d="M3.5 6.5h17"/><path d="M9 6.5V4.8a1.3 1.3 0 0 1 1.3-1.3h3.4A1.3 1.3 0 0 1 15 4.8v1.7"/><path d="M5.8 6.5 6.7 19a1.6 1.6 0 0 0 1.6 1.5h7.4a1.6 1.6 0 0 0 1.6-1.5l.9-12.5"/><path d="M10.2 10.5v6M13.8 10.5v6"/>',
+      },
+      copy: {
+        category: '액션',
+        tags: ['복사', '클립보드'],
+        body: '<rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M15.5 5.5a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2"/>',
+      },
+      download: {
+        category: '액션',
+        tags: ['다운로드', '내려받기', '저장'],
+        body: '<path d="M12 3.5v11"/><path d="m7.5 10 4.5 4.5 4.5-4.5"/><path d="M4 20.5h16"/>',
+      },
+      upload: {
+        category: '액션',
+        tags: ['업로드', '올리기'],
+        body: '<path d="M12 14.5v-11"/><path d="M7.5 8 12 3.5 16.5 8"/><path d="M4 20.5h16"/>',
+      },
+      share: {
+        category: '액션',
+        tags: ['공유', '보내기'],
+        body: '<circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="m8.2 10.8 7.6-3.8M8.2 13.2l7.6 3.8"/>',
+      },
+      refresh: {
+        category: '액션',
+        tags: ['새로고침', '갱신', '동기화'],
+        body: '<path d="M20 11.5A8 8 0 0 0 6.2 6.2L3.5 8.8"/><path d="M4 12.5a8 8 0 0 0 13.8 5.3l2.7-2.6"/><path d="M3.5 4.5v4.3h4.3M20.5 19.5v-4.3h-4.3"/>',
+      },
+      loader: {
+        category: '액션',
+        tags: ['로딩', '스피너', '대기'],
+        body: '<path d="M12 3v4M12 17v4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M3 12h4M17 12h4M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/>',
+      },
+      'log-in': {
+        category: '액션',
+        tags: ['로그인', '입장'],
+        body: '<path d="M14 4.5h4A1.5 1.5 0 0 1 19.5 6v12a1.5 1.5 0 0 1-1.5 1.5h-4"/><path d="M9 8.5 12.5 12 9 15.5"/><path d="M12.5 12H3"/>',
+      },
+      'log-out': {
+        category: '액션',
+        tags: ['로그아웃', '나가기'],
+        body: '<path d="M10 4.5H6A1.5 1.5 0 0 0 4.5 6v12A1.5 1.5 0 0 0 6 19.5h4"/><path d="M15 8.5 18.5 12 15 15.5"/><path d="M18.5 12H9"/>',
+      },
+
+      /* ── 방향 ──────────────────────────────────── */
+      'chevron-up': { category: '방향', tags: ['위', '화살표', '접기'], body: '<path d="m6.5 14.5 5.5-5.5 5.5 5.5"/>' },
+      'chevron-down': { category: '방향', tags: ['아래', '화살표', '펼치기'], body: '<path d="m6.5 9.5 5.5 5.5 5.5-5.5"/>' },
+      'chevron-left': { category: '방향', tags: ['왼쪽', '화살표', '이전'], body: '<path d="M14.5 6.5 9 12l5.5 5.5"/>' },
+      'chevron-right': { category: '방향', tags: ['오른쪽', '화살표', '다음'], body: '<path d="M9.5 6.5 15 12l-5.5 5.5"/>' },
+      'arrow-up': { category: '방향', tags: ['위', '화살표'], body: '<path d="M12 20V4.5"/><path d="m6 10.5 6-6 6 6"/>' },
+      'arrow-down': { category: '방향', tags: ['아래', '화살표'], body: '<path d="M12 4v15.5"/><path d="m6 13.5 6 6 6-6"/>' },
+      'arrow-left': { category: '방향', tags: ['왼쪽', '화살표', '뒤로'], body: '<path d="M20 12H4.5"/><path d="m10.5 6-6 6 6 6"/>' },
+      'arrow-right': { category: '방향', tags: ['오른쪽', '화살표', '앞으로'], body: '<path d="M4 12h15.5"/><path d="m13.5 6 6 6-6 6"/>' },
+      'external-link': {
+        category: '방향',
+        tags: ['외부', '링크', '새창'],
+        body: '<path d="M14 4.5h5.5V10"/><path d="M19.5 4.5 11 13"/><path d="M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/>',
+      },
+      'trending-up': {
+        category: '방향',
+        tags: ['상승', '그래프', '증가'],
+        body: '<path d="m3.5 16.5 5.5-5.5 3.5 3.5 7-7"/><path d="M14.5 7.5h5v5"/>',
+      },
+
+      /* ── 상태/알림 ─────────────────────────────── */
+      'check-circle': {
+        category: '상태',
+        tags: ['성공', '확인', '완료'],
+        body: '<circle cx="12" cy="12" r="9"/><path d="m8 12.2 2.7 2.7L16 9.6"/>',
+      },
+      'x-circle': {
+        category: '상태',
+        tags: ['오류', '실패', '에러'],
+        body: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
+      },
+      'alert-triangle': {
+        category: '상태',
+        tags: ['경고', '주의', '위험'],
+        body: '<path d="M10.3 4.3 2.8 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4"/><path d="M12 17h.01"/>',
+      },
+      info: {
+        category: '상태',
+        tags: ['정보', '안내'],
+        body: '<circle cx="12" cy="12" r="9"/><path d="M12 11.5V17"/><path d="M12 7.8h.01"/>',
+      },
+      'help-circle': {
+        category: '상태',
+        tags: ['도움말', '물음표', '질문'],
+        body: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.4"/><path d="M12 17h.01"/>',
+      },
+      bell: {
+        category: '상태',
+        tags: ['알림', '종', '벨'],
+        body: '<path d="M18 8.5a6 6 0 1 0-12 0c0 7-3 8.5-3 8.5h18s-3-1.5-3-8.5"/><path d="M13.7 20.5a2 2 0 0 1-3.4 0"/>',
+      },
+      shield: {
+        category: '상태',
+        tags: ['보안', '방패', '보호'],
+        body: '<path d="M12 3 5 5.8v5.4c0 4.4 2.9 8.3 7 9.3 4.1-1 7-4.9 7-9.3V5.8z"/>',
+      },
+      lock: {
+        category: '상태',
+        tags: ['잠금', '자물쇠', '비공개'],
+        body: '<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/><path d="M12 14.5v2"/>',
+      },
+      unlock: {
+        category: '상태',
+        tags: ['잠금해제', '열림'],
+        body: '<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.8a4 4 0 0 1 7.8-1.2"/><path d="M12 14.5v2"/>',
+      },
+      key: {
+        category: '상태',
+        tags: ['키', '열쇠', '인증'],
+        body: '<circle cx="8" cy="15.5" r="4"/><path d="m10.9 12.6 8.6-8.6"/><path d="m16 7.5 2.5 2.5"/><path d="m13.8 5.7 2.5 2.5"/>',
+      },
+
+      /* ── 미디어 ────────────────────────────────── */
+      play: { category: '미디어', tags: ['재생', '시작'], body: '<path d="M7.5 4.8 19 12 7.5 19.2z"/>' },
+      pause: { category: '미디어', tags: ['일시정지', '멈춤'], body: '<path d="M9.5 4.5v15M14.5 4.5v15"/>' },
+      volume: {
+        category: '미디어',
+        tags: ['소리', '볼륨', '스피커'],
+        body: '<path d="M11 4.5 6.5 9H3.5v6h3L11 19.5z"/><path d="M15 9.5a3.5 3.5 0 0 1 0 5"/><path d="M17.8 6.8a7.5 7.5 0 0 1 0 10.4"/>',
+      },
+      camera: {
+        category: '미디어',
+        tags: ['카메라', '사진', '촬영'],
+        body: '<path d="M3 8.5a2 2 0 0 1 2-2h2.2l1.3-2h6.9l1.3 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/>',
+      },
+      image: {
+        category: '미디어',
+        tags: ['이미지', '사진', '그림'],
+        body: '<rect x="3" y="4.5" width="18" height="15" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="m3.5 17 5-5 4 4 3-2.5 5 4.5"/>',
+      },
+      eye: {
+        category: '미디어',
+        tags: ['보기', '눈', '미리보기'],
+        body: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+      },
+      'eye-off': {
+        category: '미디어',
+        tags: ['숨김', '가리기', '비표시'],
+        body: '<path d="M10.6 6.1A9.6 9.6 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-3 3.9"/><path d="M6.6 7.7A17 17 0 0 0 2.5 12S6 18 12 18a9.4 9.4 0 0 0 4-.9"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="m3.5 3.5 17 17"/>',
+      },
+
+      /* ── 파일/데이터 ───────────────────────────── */
+      file: {
+        category: '파일',
+        tags: ['파일', '문서'],
+        body: '<path d="M13.5 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8.5z"/><path d="M13.5 3.5v5h5"/>',
+      },
+      folder: {
+        category: '파일',
+        tags: ['폴더', '디렉터리'],
+        body: '<path d="M3.5 6.5A1.5 1.5 0 0 1 5 5h4l2 2.5h8a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/>',
+      },
+      database: {
+        category: '파일',
+        tags: ['데이터베이스', 'DB', '저장소'],
+        body: '<ellipse cx="12" cy="6" rx="7.5" ry="3"/><path d="M4.5 6v12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6"/><path d="M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3"/>',
+      },
+      cloud: {
+        category: '파일',
+        tags: ['클라우드', '구름'],
+        body: '<path d="M17.5 19.5a4.5 4.5 0 0 0 .4-9 6 6 0 0 0-11.5 1.6A3.9 3.9 0 0 0 7 19.5z"/>',
+      },
+      'bar-chart': {
+        category: '파일',
+        tags: ['차트', '그래프', '통계'],
+        body: '<path d="M5.5 20.5V13M12 20.5V4M18.5 20.5v-9"/>',
+      },
+      code: {
+        category: '파일',
+        tags: ['코드', '개발'],
+        body: '<path d="m8.5 8.5-4.5 3.5 4.5 3.5"/><path d="m15.5 8.5 4.5 3.5-4.5 3.5"/><path d="m13.5 4.5-3 15"/>',
+      },
+      terminal: {
+        category: '파일',
+        tags: ['터미널', '콘솔', 'CLI'],
+        body: '<rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="m7.5 9.5 3 2.5-3 2.5"/><path d="M12.5 15h4.5"/>',
+      },
+      link: {
+        category: '파일',
+        tags: ['링크', '연결', 'URL'],
+        body: '<path d="M10 13.5a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 1 0-5-5l-1.6 1.6"/><path d="M14 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 1 0 5 5l1.6-1.6"/>',
+      },
+
+      /* ── 커뮤니케이션 ──────────────────────────── */
+      user: {
+        category: '커뮤니케이션',
+        tags: ['사용자', '프로필', '계정'],
+        body: '<circle cx="12" cy="8" r="3.75"/><path d="M4.5 20.5v-.5a5.5 5.5 0 0 1 5.5-5.5h4a5.5 5.5 0 0 1 5.5 5.5v.5"/>',
+      },
+      users: {
+        category: '커뮤니케이션',
+        tags: ['팀', '그룹', '멤버'],
+        body: '<circle cx="9.5" cy="8" r="3.5"/><path d="M3 20.5A5.5 5.5 0 0 1 8.5 15h2a5.5 5.5 0 0 1 5.5 5.5"/><path d="M16.5 4.9a3.5 3.5 0 0 1 0 6.2"/><path d="M18 15.3a5.5 5.5 0 0 1 3 5.2"/>',
+      },
+      mail: {
+        category: '커뮤니케이션',
+        tags: ['메일', '이메일', '편지'],
+        body: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.6 6.8 8.4 5.9 8.4-5.9"/>',
+      },
+      send: {
+        category: '커뮤니케이션',
+        tags: ['보내기', '전송', '비행기'],
+        body: '<path d="M21 3 10.5 13.5"/><path d="M21 3l-6.5 18-4-7.5L3 9.5z"/>',
+      },
+      message: {
+        category: '커뮤니케이션',
+        tags: ['메시지', '채팅', '댓글'],
+        body: '<path d="M20.5 12.5A7.5 7.5 0 0 1 13 20a8 8 0 0 1-3.4-.7L4 21l1.7-5.1A7.5 7.5 0 1 1 20.5 12.5z"/>',
+      },
+      phone: {
+        category: '커뮤니케이션',
+        tags: ['전화', '통화'],
+        body: '<path d="M7.2 3.5H5a1.5 1.5 0 0 0-1.5 1.6c.4 8.3 7.1 15 15.4 15.4a1.5 1.5 0 0 0 1.6-1.5v-2.2a1.5 1.5 0 0 0-1.2-1.5l-2.8-.6a1.5 1.5 0 0 0-1.5.6l-1 1.3a12.5 12.5 0 0 1-5.6-5.6l1.3-1a1.5 1.5 0 0 0 .6-1.5l-.6-2.8a1.5 1.5 0 0 0-1.5-1.2z"/>',
+      },
+      globe: {
+        category: '커뮤니케이션',
+        tags: ['지구', '글로벌', '언어'],
+        body: '<circle cx="12" cy="12" r="9"/><path d="M3.3 9.5h17.4M3.3 14.5h17.4"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/>',
+      },
+      'map-pin': {
+        category: '커뮤니케이션',
+        tags: ['위치', '지도', '핀'],
+        body: '<path d="M12 21.5s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10.5" r="2.5"/>',
+      },
+
+      /* ── 커머스 ────────────────────────────────── */
+      heart: {
+        category: '커머스',
+        tags: ['좋아요', '하트', '찜'],
+        body: '<path d="M20.8 5.9a5 5 0 0 0-7.1 0L12 7.6l-1.7-1.7a5 5 0 1 0-7.1 7.1l8.8 8.5 8.8-8.5a5 5 0 0 0 0-7.1z"/>',
+      },
+      star: {
+        category: '커머스',
+        tags: ['별', '즐겨찾기', '평점'],
+        body: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/>',
+      },
+      bookmark: {
+        category: '커머스',
+        tags: ['북마크', '저장', '스크랩'],
+        body: '<path d="M6.5 3.5h11a1 1 0 0 1 1 1v16L12 16l-6.5 4.5v-16a1 1 0 0 1 1-1z"/>',
+      },
+      tag: {
+        category: '커머스',
+        tags: ['태그', '라벨', '가격'],
+        body: '<path d="M11.6 3.5H5a1.5 1.5 0 0 0-1.5 1.5v6.6a2 2 0 0 0 .6 1.4l7 7a2 2 0 0 0 2.8 0l6-6a2 2 0 0 0 0-2.8l-7-7a2 2 0 0 0-1.3-.7z"/><path d="M7.8 7.8h.01"/>',
+      },
+      cart: {
+        category: '커머스',
+        tags: ['장바구니', '카트', '쇼핑'],
+        body: '<circle cx="9.5" cy="19.5" r="1.6"/><circle cx="17.5" cy="19.5" r="1.6"/><path d="M2.5 3.5h2.8l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h8.3a1.5 1.5 0 0 0 1.5-1.2L21 7.5H6"/>',
+      },
+      'credit-card': {
+        category: '커머스',
+        tags: ['카드', '결제', '신용카드'],
+        body: '<rect x="2.5" y="5.5" width="19" height="13" rx="2"/><path d="M2.5 10h19"/><path d="M6.5 14.5h3"/>',
+      },
+      zap: {
+        category: '커머스',
+        tags: ['번개', '빠름', '전력'],
+        body: '<path d="M13.5 2.5 4 13.8h7L10.5 21.5 20 10.2h-7z"/>',
+      },
+      gift: {
+        category: '커머스',
+        tags: ['선물', '기프트', '혜택'],
+        body: '<rect x="3" y="8.5" width="18" height="4" rx="1"/><path d="M4.5 12.5v7A1.5 1.5 0 0 0 6 21h12a1.5 1.5 0 0 0 1.5-1.5v-7"/><path d="M12 8.5V21"/><path d="M12 8.5H7.8a2.4 2.4 0 1 1 0-4.8C10.5 3.7 12 8.5 12 8.5z"/><path d="M12 8.5h4.2a2.4 2.4 0 1 0 0-4.8C13.5 3.7 12 8.5 12 8.5z"/>',
+      },
+
+      /* ── 시간/기타 ─────────────────────────────── */
+      calendar: {
+        category: '기타',
+        tags: ['달력', '일정', '날짜'],
+        body: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/>',
+      },
+      clock: {
+        category: '기타',
+        tags: ['시간', '시계', '대기'],
+        body: '<circle cx="12" cy="12" r="9"/><path d="M12 6.8V12l3.5 2.2"/>',
+      },
+      sun: {
+        category: '기타',
+        tags: ['해', '밝게', '라이트모드'],
+        body: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5V5M12 19v2.5M4.4 4.4 6.2 6.2M17.8 17.8l1.8 1.8M2.5 12H5M19 12h2.5M4.4 19.6 6.2 17.8M17.8 6.2l1.8-1.8"/>',
+      },
+      moon: {
+        category: '기타',
+        tags: ['달', '어둡게', '다크모드'],
+        body: '<path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/>',
+      },
+      wifi: {
+        category: '기타',
+        tags: ['와이파이', '네트워크', '연결'],
+        body: '<path d="M2.5 9a15 15 0 0 1 19 0"/><path d="M5.8 12.5a10 10 0 0 1 12.4 0"/><path d="M9 16a5 5 0 0 1 6 0"/><path d="M12 19.5h.01"/>',
+      },
+    };
+
+    const iconNames = Object.keys(ICONS).sort();
+    const categories = [...new Set(Object.values(ICONS).map((i) => i.category))];
+
+    /* ───── src/lib/clipboard.js ───── */
+    /**
+     * 클립보드 복사
+     * navigator.clipboard 가 막히는 환경(file:// 등)을 위한 폴백을 포함한다.
+     */
+    function copyText(text) {
+      if (navigator.clipboard?.writeText) {
+        return navigator.clipboard.writeText(text).catch(() => legacyCopy(text));
+      }
+      return Promise.resolve(legacyCopy(text));
+    }
+
+    function legacyCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+      } finally {
+        ta.remove();
+      }
+    }
+
+    /* ───── src/lib/stage.js ───── */
+    /**
+     * 미리보기 배경(stage) 계산
+     * 상세 패널의 BgPicker 가 고른 값을 실제 className/style 로 바꾼다.
+     */
+
+    /** 배경 밝기에 맞춰 글자색(= currentColor 아이콘 색)을 고른다 */
+    function contrastText(hex) {
+      const h = hex.replace('#', '');
+      if (h.length !== 6) return '#16191f';
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      return luminance > 0.55 ? '#16191f' : '#ffffff';
+    }
+
+    /** 선택한 배경을 stage 에 입히는 className/style */
+    function stageProps(bg, customBg) {
+      if (bg === 'custom') {
+        return { className: 'stage', style: { background: customBg, color: contrastText(customBg) } };
+      }
+      return { className: `stage bg-${bg}` };
+    }
+
+    /* ───── src/lib/assetUtils.js ───── */
+    /**
+     * 이미지 아이콘(cafe On) 공용 유틸
+     * - GIF 헤더 파싱, 에셋 로더, 리사이즈·내보내기, 배경 프리셋
+     */
+
+    const SIZE_LADDER = [16, 20, 24, 32, 48, 64, 96, 128];
+
+    const BACKGROUNDS = [
+      { id: 'checker', label: '투명(체커)' },
+      { id: 'white', label: '흰색' },
+      { id: 'gray', label: '회색' },
+      { id: 'dark', label: '검정' },
+      { id: 'brand', label: '브랜드' },
+      { id: 'photo', label: '사진' },
+    ];
+
+    /* ══════════════════════════════════════════
+       GIF 헤더 파서
+       해상도 · 프레임 수 · 재생 시간 · 반복 · 투명도
+       ══════════════════════════════════════════ */
+    function skipSubBlocks(b, p) {
+      while (p < b.length && b[p] !== 0) p += b[p] + 1;
+      return p + 1;
+    }
+
+    function parseGif(buffer) {
+      const b = new Uint8Array(buffer);
+      const dv = new DataView(buffer);
+      // 헤더(13바이트)조차 없으면 GIF 가 아니거나 잘린 파일
+      if (b.length < 13) return null;
+      if (String.fromCharCode(b[0], b[1], b[2]) !== 'GIF') return null;
+
+      /** 범위를 벗어난 읽기는 0 으로 (잘린 파일 방어) */
+      const u16 = (o) => (o + 1 < b.length ? dv.getUint16(o, true) : 0);
+
+      const width = u16(6);
+      const height = u16(8);
+      const packed = b[10];
+
+      const hasGlobalPalette = !!(packed & 0x80);
+      let p = 13;
+      if (hasGlobalPalette) p += 3 * (1 << ((packed & 7) + 1)); // 전역 색상표 건너뛰기
+
+      let frames = 0;
+      let durationMs = 0;
+      let transparent = false;
+      let loops = null;
+      let localPalettes = 0;
+      let guard = 0;
+
+      while (p < b.length && guard++ < 200000) {
+        const marker = b[p];
+
+        if (marker === 0x3b) break; // trailer
+
+        if (marker === 0x21) {
+          const label = b[p + 1];
+          p += 2;
+          if (label === 0xf9) {
+            // Graphic Control Extension
+            const size = b[p];
+            const gce = b[p + 1];
+            const delay = u16(p + 2);
+            if (gce & 1) transparent = true;
+            // 브라우저는 delay < 2 를 10(=100ms)으로 보정한다
+            durationMs += (delay < 2 ? 10 : delay) * 10;
+            p = skipSubBlocks(b, p + size + 1);
+          } else if (label === 0xff) {
+            // Application Extension (NETSCAPE 반복 횟수)
+            const size = b[p];
+            const app = String.fromCharCode(...b.slice(p + 1, p + 12));
+            const q = p + 1 + size;
+            if (app.startsWith('NETSCAPE') && b[q] >= 3) loops = u16(q + 2);
+            p = skipSubBlocks(b, q);
+          } else if (label === 0xfe) {
+            p = skipSubBlocks(b, p); // Comment
+          } else {
+            p = skipSubBlocks(b, p + 1 + b[p]); // Plain Text 등
+          }
+        } else if (marker === 0x2c) {
+          // Image Descriptor
+          frames++;
+          const lpacked = b[p + 9];
+          p += 10;
+          if (lpacked & 0x80) {
+            localPalettes++;
+            p += 3 * (1 << ((lpacked & 7) + 1)); // 지역 색상표
+          }
+          p += 1; // LZW 최소 코드 크기
+          p = skipSubBlocks(b, p);
+        } else {
+          p++;
+        }
+      }
+
+      return {
+        format: 'GIF',
+        width,
+        height,
+        frames,
+        durationMs,
+        loops, // 0 = 무한
+        transparent,
+        // 프레임이 지역 팔레트를 쓰면 색상은 프레임마다 따로 정해진다
+        localPalettes,
+        colors: hasGlobalPalette ? 1 << ((packed & 7) + 1) : null,
+      };
+    }
+
+    /* ══════════════════════════════════════════
+       에셋 로더
+       fetch 로 원본을 읽어 메타데이터 + Blob URL 확보.
+       file:// 로 열었을 때는 fetch 가 막히므로 <img> 직접 로드로 폴백.
+       ══════════════════════════════════════════ */
+    function useAsset(src, initialBlob) {
+      const [state, setState] = useState({ status: 'loading', url: src, meta: null, bytes: null });
+      const blobRef = useRef(initialBlob || null);
+      const urlRef = useRef(null);
+
+      useEffect(() => {
+        let alive = true;
+
+        async function load() {
+          // 드롭된 파일은 이미 Blob 을 가지고 있다
+          if (blobRef.current) {
+            const buf = await blobRef.current.arrayBuffer();
+            if (!alive) return;
+            const url = URL.createObjectURL(blobRef.current);
+            urlRef.current = url;
+            setState({
+              status: 'ok',
+              url,
+              bytes: blobRef.current.size,
+              meta: parseGif(buf),
+            });
+            return;
+          }
+
+          try {
+            const res = await fetch(src);
+            if (!res.ok) throw new Error(String(res.status));
+            const buf = await res.arrayBuffer();
+            if (!alive) return;
+            const blob = new Blob([buf]);
+            blobRef.current = blob;
+            const url = URL.createObjectURL(blob);
+            urlRef.current = url;
+            setState({ status: 'ok', url, bytes: buf.byteLength, meta: parseGif(buf) });
+          } catch {
+            // file:// 등 — 이미지 자체는 표시되지만 메타데이터는 못 읽는다
+            if (alive) setState({ status: 'limited', url: src, meta: null, bytes: null });
+          }
+        }
+
+        load();
+        return () => {
+          alive = false;
+          if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+        };
+      }, [src]);
+
+      /** 애니메이션 처음부터 다시 재생 */
+      const restart = useCallback(() => {
+        setState((s) => {
+          if (blobRef.current) {
+            if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+            const url = URL.createObjectURL(blobRef.current);
+            urlRef.current = url;
+            return { ...s, url };
+          }
+          const base = src.split('?')[0];
+          return { ...s, url: `${base}?r=${Date.now()}` };
+        });
+      }, [src]);
+
+      return [state, restart];
+    }
+
+    /* ══════════════════════════════════════════
+       실제 픽셀 크기로 다시 렌더링 (리사이즈 · 내보내기)
+       640px 원본을 24px 로 "표시"만 하는 게 아니라
+       진짜 24px 이미지로 만들어 준다.
+       ══════════════════════════════════════════ */
+    function loadImage(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('이미지를 불러오지 못했습니다'));
+        img.src = url;
+      });
+    }
+
+    /**
+     * @param url   원본 이미지 URL (blob: 권장 — file:// 경로는 캔버스가 오염된다)
+     * @param px    출력할 정사각형 픽셀 크기
+     * @param type  'image/png' | 'image/webp'
+     * @returns {Promise<Blob>}
+     */
+    async function renderAtSize(url, px, type = 'image/png') {
+      const img = await loadImage(url);
+      const canvas = document.createElement('canvas');
+      canvas.width = px;
+      canvas.height = px;
+
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // 비율을 유지한 채 정사각형 캔버스 가운데 배치
+      const w = img.naturalWidth || px;
+      const h = img.naturalHeight || px;
+      const ratio = Math.min(px / w, px / h);
+      const dw = Math.max(1, Math.round(w * ratio));
+      const dh = Math.max(1, Math.round(h * ratio));
+      ctx.drawImage(img, Math.round((px - dw) / 2), Math.round((px - dh) / 2), dw, dh);
+
+      return new Promise((resolve, reject) => {
+        try {
+          canvas.toBlob(
+            (blob) => (blob ? resolve(blob) : reject(new Error('이미지를 만들지 못했습니다'))),
+            type
+          );
+        } catch {
+          // 캔버스 오염(file:// 에서 흔함)
+          reject(new Error('보안 정책 때문에 이 이미지를 변환할 수 없습니다'));
+        }
+      });
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    /* ══════════════════════════════════════════
+       포맷
+       ══════════════════════════════════════════ */
+    function formatBytes(n) {
+      if (n < 1024) return `${n} B`;
+      if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+      return `${(n / 1024 / 1024).toFixed(2)} MB`;
+    }
+
+    /* ───── src/app/constants.js ───── */
+    /**
+     * 테스트 페이지 전역 상수
+     */
+
+    const ALL_NAMES = Object.keys(ICONS).sort();
+    const CATEGORIES = [...new Set(ALL_NAMES.map((n) => ICONS[n].category))];
+
+    /** 사용자가 넣은 이미지 아이콘(icon/ 폴더 + 드래그해 추가한 파일) 묶음 이름 */
+    const CAFE = 'cafe On';
+
+    const IMAGE_EXT = /\.(gif|png|apng|webp|svg|avif|jpe?g)$/i;
+    const SWATCHES = ['currentColor', '#4f46e5', '#0ea5e9', '#16a34a', '#f59e0b', '#dc2626'];
+    const PREVIEW_SIZES = [12, 16, 20, 24, 32, 48, 64];
+
+    /** 툴바 초기값 — "기본값으로 초기화" 버튼이 이 값으로 되돌린다 */
+    const DEFAULTS = { size: 24, strokeWidth: 1.75, color: 'currentColor' };
+
+    /* ───── src/app/hooks.js ───── */
+    /**
+     * 앱 전용 훅
+     * - useTheme      : 라이트/다크 (localStorage 저장)
+     * - useToast      : 짧게 떴다 사라지는 알림
+     * - useCustomTags : 사용자가 덧붙인 검색 태그 (localStorage 저장)
+     */
+
+
+    const THEME_KEY = 'icon-tester-theme';
+    const TAGS_KEY = 'icon-tester-tags';
+
+    function useTheme() {
+      const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'light');
+
+      useEffect(() => {
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem(THEME_KEY, theme);
+      }, [theme]);
+
+      const toggleTheme = useCallback(() => setTheme((t) => (t === 'light' ? 'dark' : 'light')), []);
+
+      return [theme, toggleTheme];
+    }
+
+    function useToast() {
+      const [toast, setToast] = useState('');
+      const timer = useRef(null);
+
+      const showToast = useCallback((msg) => {
+        setToast(msg);
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => setToast(''), 1600);
+      }, []);
+
+      useEffect(() => () => clearTimeout(timer.current), []);
+
+      return [toast, showToast];
+    }
+
+    /**
+     * ICONS 의 기본 태그에 덧붙이는 사용자 태그.
+     * 키: 라인 아이콘은 아이콘 이름, 이미지 아이콘은 "@파일명"
+     */
+    function useCustomTags(showToast) {
+      const [customTags, setCustomTags] = useState(() => {
+        try {
+          return JSON.parse(localStorage.getItem(TAGS_KEY) || '{}');
+        } catch {
+          return {};
+        }
+      });
+
+      useEffect(() => {
+        localStorage.setItem(TAGS_KEY, JSON.stringify(customTags));
+      }, [customTags]);
+
+      const addTags = useCallback(
+        (key, raw) => {
+          const builtin = ICONS[key]?.tags || [];
+          const existing = customTags[key] || [];
+          const fresh = [];
+          for (const part of String(raw).split(/[,\n]+/)) {
+            const tag = part.trim();
+            if (!tag) continue;
+            if (builtin.includes(tag) || existing.includes(tag) || fresh.includes(tag)) continue;
+            fresh.push(tag);
+          }
+          if (!fresh.length) {
+            showToast('이미 있는 태그입니다');
+            return;
+          }
+          setCustomTags((prev) => ({ ...prev, [key]: [...(prev[key] || []), ...fresh] }));
+          showToast(`태그 ${fresh.length}개 추가됨`);
+        },
+        [customTags, showToast]
+      );
+
+      const removeTag = useCallback((key, tag) => {
+        setCustomTags((prev) => {
+          const next = (prev[key] || []).filter((t) => t !== tag);
+          const copy = { ...prev };
+          if (next.length) copy[key] = next;
+          else delete copy[key];
+          return copy;
+        });
+      }, []);
+
+      return { customTags, addTags, removeTag };
+    }
+
+    /* ───── src/components/Icon.jsx ───── */
+    /**
+     * 아이콘 컴포넌트
+     *
+     * @example
+     * <Icon name="search" />
+     * <Icon name="loader" size={20} spin />
+     * <Icon name="trash" color="#dc2626" strokeWidth={2} title="삭제" />
+     *
+     * props
+     *  - name        : 아이콘 이름 (필수)
+     *  - size        : px 크기 (기본 24). CSS 로 제어하려면 size="1em"
+     *  - strokeWidth : 선 두께 (기본 1.75)
+     *  - color       : 색상 (기본 currentColor — 부모 글자색을 따라감)
+     *  - title       : 지정하면 의미 있는 이미지(role="img")로, 없으면 장식용(aria-hidden)
+     *  - spin        : 회전 애니메이션
+     *  - pulse       : 깜빡임 애니메이션
+     *  - rotate      : 회전 각도 (deg)
+     *  - flip        : 'x' | 'y' | 'xy'
+     *  - absoluteStrokeWidth : true 면 크기가 변해도 선 두께를 24px 기준으로 고정
+     */
+    const Icon = forwardRef(function Icon(
+      {
+        name,
+        size = 24,
+        strokeWidth = 1.75,
+        color = "currentColor",
+        title,
+        spin = false,
+        pulse = false,
+        rotate = 0,
+        flip,
+        absoluteStrokeWidth = false,
+        className = "",
+        style,
+        ...rest
+      },
+      ref,
+    ) {
+      const icon = ICONS[name];
+
+      const transform = useMemo(() => {
+        const t = [];
+        if (rotate) t.push(`rotate(${rotate}deg)`);
+        if (flip === "x" || flip === "xy") t.push("scaleX(-1)");
+        if (flip === "y" || flip === "xy") t.push("scaleY(-1)");
+        return t.length ? t.join(" ") : undefined;
+      }, [rotate, flip]);
+
+      if (!icon) {
+        console.warn(`[Icon] "${name}" 아이콘을 찾을 수 없습니다.`);
+        return null;
+      }
+
+      const numeric =
+        typeof size === "number" || /^\d+(\.\d+)?$/.test(String(size));
+      const px = numeric ? Number(size) : null;
+      const sw = absoluteStrokeWidth && px ? (strokeWidth * 24) / px : strokeWidth;
+
+      const cls = [
+        "ui-icon",
+        spin && "ui-icon-spin",
+        pulse && "ui-icon-pulse",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      return (
+        <svg
+          ref={ref}
+          className={cls}
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          width={px ?? size}
+          height={px ?? size}
+          fill="none"
+          stroke={color}
+          strokeWidth={sw}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          role={title ? "img" : undefined}
+          aria-hidden={title ? undefined : true}
+          focusable="false"
+          style={{ display: "block", flex: "none", transform, ...style }}
+          dangerouslySetInnerHTML={{
+            __html: (title ? `<title>${escapeXml(title)}</title>` : "") + icon.body,
+          }}
+          {...rest}
+        />
+      );
+    });
+
+    function escapeXml(s) {
+      return String(s).replace(
+        /[<>&"]/g,
+        (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c],
+      );
+    }
+
+    /** 아이콘 하나를 독립 실행 가능한 SVG 문자열로 반환 */
+    function toSvgString(
+      name,
+      { size = 24, strokeWidth = 1.75, color = "currentColor" } = {},
+    ) {
+      const icon = ICONS[name];
+      if (!icon) return "";
+      return (
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" ` +
+        `fill="none" stroke="${color}" stroke-width="${strokeWidth}" ` +
+        `stroke-linecap="round" stroke-linejoin="round">` +
+        icon.body.replace(/\/><path/g, "/>\n  <path").replace(/^</, "\n  <") +
+        `\n</svg>`
+      );
+    }
+
+    /* ───── src/components/CodeBlock.jsx ───── */
+    /** 복사 버튼이 달린 코드 블록 */
+    function CodeBlock({ code, onCopy }) {
+      return (
+        <div className="code-block">
+          <pre>{code}</pre>
+          <button className="copy" onClick={onCopy} aria-label="복사">
+            <Icon name="copy" size={14} />
+          </button>
+        </div>
+      );
+    }
+
+    /* ───── src/components/BgPicker.jsx ───── */
+    /**
+     * 미리보기 배경 선택기 (상세 패널 안)
+     * 프리셋 6종 + 직접 고른 색.
+     * currentColor 아이콘은 배경의 글자색을 따라가므로
+     * 어두운 배경에서도 그대로 보인다.
+     */
+    function BgPicker({ value, custom, onChange, onCustom }) {
+      return (
+        <div className="bg-picker">
+          <div className="seg sm" role="group" aria-label="미리보기 배경">
+            {BACKGROUNDS.map((b) => (
+              <button
+                key={b.id}
+                className="seg-btn"
+                aria-pressed={value === b.id}
+                onClick={() => onChange(b.id)}
+              >
+                {b.label}
+              </button>
+            ))}
+            <button
+              className="seg-btn"
+              aria-pressed={value === 'custom'}
+              onClick={() => onChange('custom')}
+            >
+              직접
+            </button>
+          </div>
+          <input
+            type="color"
+            value={custom}
+            onChange={(e) => {
+              onCustom(e.target.value);
+              onChange('custom');
+            }}
+            title="배경색 직접 선택"
+            aria-label="배경색 직접 선택"
+          />
+        </div>
+      );
+    }
+
+    /* ───── src/components/TagEditor.jsx ───── */
+    /**
+     * 태그 편집기
+     * 기본 태그(data/icons.js)는 고정, 사용자가 더한 태그만 삭제 가능
+     */
+    function TagEditor({ builtin = [], custom = [], onAdd, onRemove, onCopy }) {
+      const [value, setValue] = useState('');
+
+      const submit = (e) => {
+        e.preventDefault();
+        if (!value.trim()) return;
+        onAdd(value);
+        setValue('');
+      };
+
+      return (
+        <div className="tag-editor">
+          <div className="tag-row">
+            {builtin.map((t) => (
+              <span className="tag" key={`b-${t}`}>
+                {t}
+              </span>
+            ))}
+            {custom.map((t) => (
+              <span className="tag custom" key={`c-${t}`}>
+                {t}
+                <button type="button" onClick={() => onRemove(t)} aria-label={`${t} 태그 삭제`}>
+                  <Icon name="x" size={10} strokeWidth={2.5} />
+                </button>
+              </span>
+            ))}
+            {builtin.length + custom.length === 0 && (
+              <span className="tag-empty">아직 태그가 없습니다</span>
+            )}
+          </div>
+
+          <form className="tag-form" onSubmit={submit}>
+            <input
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="태그 입력 후 Enter · 쉼표로 여러 개"
+              aria-label="태그 추가"
+            />
+            <button type="submit" className="demo-btn sm" disabled={!value.trim()}>
+              <Icon name="plus" size={13} />
+              추가
+            </button>
+          </form>
+
+          <div className="tag-foot">
+            <span>추가한 태그는 이 브라우저에 저장되며 검색에 바로 반영됩니다.</span>
+            <button type="button" className="link-btn" onClick={onCopy}>
+              <Icon name="copy" size={12} />
+              icons.js 용 tags 복사
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    /* ───── src/components/ExportBox.jsx ───── */
+    /**
+     * 크기 변환 · 내보내기
+     * 원본(예: 640px)을 실제 목표 픽셀로 다시 렌더링해 저장한다
+     */
+    function ExportBox({ item, url, size, onToast }) {
+      const [px, setPx] = useState(Math.max(8, Math.round(size)));
+      const [scale, setScale] = useState(1);
+      const [type, setType] = useState('image/png');
+      const [result, setResult] = useState(null); // { url, bytes }
+      const [error, setError] = useState('');
+      const [busy, setBusy] = useState(false);
+
+      const outPx = Math.min(1024, Math.max(8, Math.round(px * scale)));
+      const ext = type === 'image/webp' ? 'webp' : 'png';
+      const filename = `${item.name}-${px}${scale > 1 ? `@${scale}x` : ''}.${ext}`;
+
+      /* 설정이 바뀌면 미리보기를 다시 만든다 */
+      useEffect(() => {
+        let alive = true;
+        let objectUrl = null;
+        setError('');
+        setBusy(true);
+
+        const timer = setTimeout(async () => {
+          try {
+            const blob = await renderAtSize(url, outPx, type);
+            if (!alive) return;
+            objectUrl = URL.createObjectURL(blob);
+            setResult({ url: objectUrl, bytes: blob.size, blob });
+          } catch (e) {
+            if (alive) {
+              setResult(null);
+              setError(e.message);
+            }
+          } finally {
+            if (alive) setBusy(false);
+          }
+        }, 220);
+
+        return () => {
+          alive = false;
+          clearTimeout(timer);
+          if (objectUrl) URL.revokeObjectURL(objectUrl);
+        };
+      }, [url, outPx, type]);
+
+      return (
+        <div className="export-box">
+          <div className="export-row">
+            <label htmlFor="export-px">크기</label>
+            <input
+              id="export-px"
+              type="number"
+              min="8"
+              max="512"
+              value={px}
+              onChange={(e) => setPx(Math.max(1, Number(e.target.value) || 1))}
+            />
+            <span className="unit">px</span>
+            <div className="seg sm">
+              {[1, 2, 3].map((s) => (
+                <button
+                  key={s}
+                  className="seg-btn"
+                  aria-pressed={scale === s}
+                  onClick={() => setScale(s)}
+                >
+                  @{s}x
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="export-row">
+            <label>형식</label>
+            <div className="seg sm">
+              <button
+                className="seg-btn"
+                aria-pressed={type === 'image/png'}
+                onClick={() => setType('image/png')}
+              >
+                PNG
+              </button>
+              <button
+                className="seg-btn"
+                aria-pressed={type === 'image/webp'}
+                onClick={() => setType('image/webp')}
+              >
+                WebP
+              </button>
+            </div>
+            <span className="export-out">
+              → {outPx} × {outPx}px
+            </span>
+          </div>
+
+          {error ? (
+            <p className="hint export-error">
+              {error} — <code>npm run dev</code> 로 실행하거나 파일을 페이지에 드래그해 추가하면 변환할
+              수 있습니다.
+            </p>
+          ) : (
+            <div className="export-result">
+              <div className="export-preview">
+                {result && (
+                  <img
+                    src={result.url}
+                    alt="변환 결과"
+                    style={{ width: Math.min(outPx, 128), height: Math.min(outPx, 128) }}
+                  />
+                )}
+              </div>
+              <div className="export-info">
+                <div className="export-size">
+                  {busy ? '변환 중…' : result ? formatBytes(result.bytes) : '—'}
+                </div>
+                <div className="export-name">{filename}</div>
+                <button
+                  className="demo-btn sm"
+                  disabled={!result || busy}
+                  onClick={() => {
+                    downloadBlob(result.blob, filename);
+                    onToast(`${filename} 저장됨`);
+                  }}
+                >
+                  <Icon name="download" size={13} />
+                  내려받기
+                </button>
+              </div>
+            </div>
+          )}
+
+          <p className="hint">
+            원본을 목표 픽셀로 다시 그려 저장합니다. <b>애니메이션은 유지되지 않고 정지 이미지 한 장</b>
+            으로 저장됩니다 — 움직임을 살리려면 원본 툴(AE·Lottie)에서 작은 크기로 다시 내보내세요.
+          </p>
+        </div>
+      );
+    }
+
+    /* ───── src/components/Toast.jsx ───── */
+    /** 화면 하단에 잠깐 뜨는 알림 */
+    function Toast({ message }) {
+      if (!message) return null;
+      return (
+        <div className="toast" role="status">
+          <Icon name="check-circle" size={16} />
+          {message}
+        </div>
+      );
+    }
+
+    /* ───── src/components/DropOverlay.jsx ───── */
+    /** 파일을 페이지 위로 끌고 왔을 때 덮이는 안내 */
+    function DropOverlay() {
+      return (
+        <div className="drop-overlay">
+          <Icon name="download" size={30} />
+          <div className="big">놓으면 cafe On 에 추가됩니다</div>
+          <div>GIF · PNG · SVG · WebP — 브라우저 안에서만 처리되며 업로드되지 않습니다</div>
+        </div>
+      );
+    }
+
+    /* ───── src/components/Masthead.jsx ───── */
+    /** 페이지 상단 헤더 + 테마 전환 */
+    function Masthead({ count, theme, onToggleTheme }) {
+      return (
+        <header className="masthead">
+          <div className="brand-mark">
+            <Icon name="grid" size={22} strokeWidth={1.75} color="#fff" />
+          </div>
+          <div>
+            <h1>아이콘 컴포넌트 테스터</h1>
+            <div className="sub">{count}개 아이콘 · 24×24 그리드 · 라인 스타일 · React</div>
+          </div>
+          <div className="spacer" />
+          <button
+            className="icon-btn"
+            onClick={onToggleTheme}
+            title={theme === 'light' ? '다크 모드로 전환' : '라이트 모드로 전환'}
+            aria-label="테마 전환"
+          >
+            <Icon name={theme === 'light' ? 'moon' : 'sun'} size={18} />
+          </button>
+        </header>
+      );
+    }
+
+    /* ───── src/components/Toolbar.jsx ───── */
+    /**
+     * 검색 · 크기/두께/색상 조절 · 분류 필터
+     * 상태는 App 이 들고 있고 여기서는 표시와 입력만 담당한다.
+     */
+    function Toolbar({
+      searchRef,
+      query,
+      onQuery,
+      size,
+      onSize,
+      strokeWidth,
+      onStrokeWidth,
+      color,
+      onColor,
+      customColor,
+      onCustomColor,
+      pixelGrid,
+      onPixelGrid,
+      onReset,
+      category,
+      onCategory,
+      counts,
+      onAddFiles,
+    }) {
+      const fileRef = useRef(null);
+
+      return (
+        <div className="toolbar">
+          <div className="toolbar-row">
+            <div className="search">
+              <Icon name="search" size={16} />
+              <input
+                ref={searchRef}
+                value={query}
+                onChange={(e) => onQuery(e.target.value)}
+                placeholder="이름 · 태그 · 분류로 검색 (예: 삭제, arrow, 알림)"
+                aria-label="아이콘 검색"
+              />
+              {query ? (
+                <button className="clear" onClick={() => onQuery('')} aria-label="검색어 지우기">
+                  <Icon name="x" size={13} />
+                </button>
+              ) : (
+                <span className="kbd-hint">/</span>
+              )}
+            </div>
+
+            <div className="control">
+              <label htmlFor="size-range">크기</label>
+              <input
+                id="size-range"
+                type="range"
+                min="12"
+                max="96"
+                step="1"
+                value={size}
+                onChange={(e) => onSize(Number(e.target.value))}
+              />
+              <span className="val">{size}px</span>
+            </div>
+
+            <div className="control">
+              <label htmlFor="stroke-range">두께</label>
+              <input
+                id="stroke-range"
+                type="range"
+                min="0.5"
+                max="3"
+                step="0.25"
+                value={strokeWidth}
+                onChange={(e) => onStrokeWidth(Number(e.target.value))}
+              />
+              <span className="val">{strokeWidth}</span>
+            </div>
+
+            <div className="swatches">
+              {SWATCHES.map((c) => (
+                <button
+                  key={c}
+                  className="swatch"
+                  aria-pressed={color === c}
+                  onClick={() => onColor(c)}
+                  title={c === 'currentColor' ? 'currentColor (글자색 상속)' : c}
+                  style={c === 'currentColor' ? { background: 'var(--text)' } : { background: c }}
+                />
+              ))}
+              <input
+                type="color"
+                value={customColor}
+                onChange={(e) => {
+                  onCustomColor(e.target.value);
+                  onColor(e.target.value);
+                }}
+                title="직접 선택"
+                aria-label="사용자 지정 색상"
+              />
+            </div>
+
+            <button
+              className="icon-btn"
+              aria-pressed={pixelGrid}
+              onClick={() => onPixelGrid(!pixelGrid)}
+              title="8px 그리드 오버레이 — 선이 픽셀에 정렬되는지 확인"
+            >
+              <Icon name="grid" size={17} />
+            </button>
+
+            <button className="icon-btn" onClick={onReset} title="기본값으로 초기화">
+              <Icon name="refresh" size={17} />
+            </button>
+          </div>
+
+          <div className="toolbar-row">
+            <div className="chips">
+              <button
+                className="chip"
+                aria-pressed={category === '전체'}
+                onClick={() => onCategory('전체')}
+              >
+                전체
+                <span className="count">{counts['전체']}</span>
+              </button>
+
+              <button
+                className="chip cafe"
+                aria-pressed={category === CAFE}
+                onClick={() => onCategory(CAFE)}
+                title="내가 넣은 이미지 아이콘 (icon/ 폴더 + 직접 추가한 파일)"
+              >
+                <Icon name="image" size={13} />
+                {CAFE}
+                <span className="count">{counts[CAFE]}</span>
+              </button>
+
+              <button
+                className="chip add"
+                onClick={() => fileRef.current?.click()}
+                title="GIF · PNG · SVG · WebP 파일을 cafe On 에 추가"
+              >
+                <Icon name="plus" size={13} />
+                파일 추가
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                onChange={(e) => {
+                  onAddFiles(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+
+              <span className="chip-divider" aria-hidden="true" />
+
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c}
+                  className="chip"
+                  aria-pressed={category === c}
+                  onClick={() => onCategory(c)}
+                >
+                  {c}
+                  <span className="count">{counts[c] ?? 0}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ───── src/components/IconGrid.jsx ───── */
+    /**
+     * 아이콘 그리드
+     * 라인 아이콘(names)과 cafe On 이미지 아이콘(assets)을 한 그리드에 함께 보여준다.
+     */
+    function IconGrid({
+      names,
+      assets,
+      size,
+      iconProps,
+      pixelGrid,
+      selected,
+      onSelect,
+    }) {
+      if (names.length + assets.length === 0) return null;
+
+      return (
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: `repeat(auto-fill, minmax(${Math.max(104, size + 56)}px, 1fr))`,
+          }}
+        >
+          {assets.map((item) => (
+            <button
+              key={item.url}
+              className={`cell asset${pixelGrid ? ' pixelgrid' : ''}`}
+              aria-selected={selected?.type === 'asset' && selected.item === item}
+              onClick={() => onSelect({ type: 'asset', item })}
+              title={`${item.file} — 클릭하면 상세 보기`}
+            >
+              <span className="glyph">
+                <img
+                  src={item.url}
+                  alt=""
+                  width={size}
+                  height={size}
+                  style={{ width: size, height: size, objectFit: 'contain' }}
+                />
+              </span>
+              <span className="name">{item.name}</span>
+            </button>
+          ))}
+
+          {names.map((name) => (
+            <button
+              key={name}
+              className={`cell${pixelGrid ? ' pixelgrid' : ''}`}
+              aria-selected={selected?.type === 'icon' && selected.name === name}
+              onClick={() => onSelect({ type: 'icon', name })}
+              title={`${name} — 클릭하면 상세 보기`}
+            >
+              <span className="glyph">
+                <Icon name={name} {...iconProps} spin={name === 'loader'} />
+              </span>
+              <span className="name">{name}</span>
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    /** 검색 결과가 없을 때 */
+    function EmptyState({ category, query }) {
+      if (category === CAFE && !query) {
+        return (
+          <div className="empty">
+            <div className="big">cafe On 에 아직 파일이 없습니다</div>
+            <div>
+              파일을 이 페이지에 끌어다 놓거나 위의 <b>파일 추가</b> 버튼을 누르세요. GIF · PNG · SVG ·
+              WebP 를 지원합니다.
+            </div>
+          </div>
+        );
+      }
+      return (
+        <div className="empty">
+          <div className="big">일치하는 아이콘이 없습니다</div>
+          <div>다른 검색어를 입력하거나 분류를 ‘전체’로 바꿔 보세요.</div>
+        </div>
+      );
+    }
+
+    /* ───── src/components/DetailPanel.jsx ───── */
+    /** 라인 아이콘 상세 패널 */
+    function DetailPanel({
+      name,
+      size,
+      strokeWidth,
+      color,
+      customTags,
+      onAddTags,
+      onRemoveTag,
+      onClose,
+      onCopy,
+    }) {
+      const [rotate, setRotate] = useState(0);
+      const [flip, setFlip] = useState(null);
+      const [spin, setSpin] = useState(false);
+      const [bg, setBg] = useState('checker');
+      const [customBg, setCustomBg] = useState('#4f46e5');
+      const icon = ICONS[name];
+
+      useEffect(() => {
+        setRotate(0);
+        setFlip(null);
+        setSpin(false);
+      }, [name]);
+
+      const jsx = useMemo(() => {
+        const p = [`name="${name}"`];
+        if (size !== 24) p.push(`size={${size}}`);
+        if (strokeWidth !== 1.75) p.push(`strokeWidth={${strokeWidth}}`);
+        if (color !== 'currentColor') p.push(`color="${color}"`);
+        if (rotate) p.push(`rotate={${rotate}}`);
+        if (flip) p.push(`flip="${flip}"`);
+        if (spin) p.push('spin');
+        return `<Icon ${p.join(' ')} />`;
+      }, [name, size, strokeWidth, color, rotate, flip, spin]);
+
+      const svg = useMemo(
+        () => toSvgString(name, { size, strokeWidth, color }),
+        [name, size, strokeWidth, color]
+      );
+
+      return (
+        <>
+          <div className="scrim" onClick={onClose} />
+          <aside className="panel" role="dialog" aria-label={`${name} 아이콘 상세`}>
+            <div className="panel-head">
+              <Icon name={name} size={20} strokeWidth={strokeWidth} />
+              <span className="title">{name}</span>
+              <span className="spacer" />
+              <button className="icon-btn" onClick={onClose} aria-label="닫기">
+                <Icon name="x" size={17} />
+              </button>
+            </div>
+
+            <div className="panel-body">
+              <div {...stageProps(bg, customBg)}>
+                <Icon
+                  name={name}
+                  size={Math.max(size, 72)}
+                  strokeWidth={strokeWidth}
+                  color={color}
+                  rotate={rotate}
+                  flip={flip}
+                  spin={spin}
+                />
+              </div>
+
+              <BgPicker value={bg} custom={customBg} onChange={setBg} onCustom={setCustomBg} />
+
+              {color === 'currentColor' && (
+                <p className="hint bg-note">
+                  색상이 <code>currentColor</code> 라 아이콘이 배경의 글자색을 따라갑니다. 고정 색으로
+                  보려면 상단 툴바에서 색을 지정하세요.
+                </p>
+              )}
+
+              <div className="demo-row" style={{ marginTop: 10 }}>
+                <button className="demo-btn sm" onClick={() => setRotate((r) => (r + 90) % 360)}>
+                  <Icon name="refresh" size={14} /> 회전 {rotate}°
+                </button>
+                <button
+                  className="demo-btn sm"
+                  onClick={() => setFlip(flip === 'x' ? null : 'x')}
+                  aria-pressed={flip === 'x'}
+                >
+                  <Icon name="arrow-right" size={14} flip="x" /> 좌우 반전
+                </button>
+                <button className="demo-btn sm" onClick={() => setSpin(!spin)} aria-pressed={spin}>
+                  <Icon name="loader" size={14} spin={spin} /> 회전 애니메이션
+                </button>
+              </div>
+
+              <dl className="meta">
+                <dt>분류</dt>
+                <dd>{icon.category}</dd>
+                <dt>크기</dt>
+                <dd>
+                  {size}px · 두께 {strokeWidth} · {color}
+                </dd>
+              </dl>
+
+              <div className="section-label">태그</div>
+              <TagEditor
+                builtin={icon.tags}
+                custom={customTags}
+                onAdd={onAddTags}
+                onRemove={onRemoveTag}
+                onCopy={() => {
+                  const all = [...icon.tags, ...customTags];
+                  const code = `tags: [${all.map((t) => `'${t}'`).join(', ')}],`;
+                  onCopy(code, 'tags 배열');
+                }}
+              />
+
+              <div className="section-label">크기별 렌더링</div>
+              <div className="sizes-strip">
+                {PREVIEW_SIZES.map((s) => (
+                  <figure key={s}>
+                    <Icon name={name} size={s} strokeWidth={strokeWidth} color={color} />
+                    <figcaption>{s}</figcaption>
+                  </figure>
+                ))}
+              </div>
+
+              <div className="section-label">React</div>
+              <CodeBlock code={jsx} onCopy={() => onCopy(jsx, 'JSX')} />
+              <CodeBlock
+                code={`import Icon from './components/Icon';`}
+                onCopy={() => onCopy(`import Icon from './components/Icon';`, 'import 문')}
+              />
+
+              <div className="section-label">SVG</div>
+              <CodeBlock code={svg} onCopy={() => onCopy(svg, 'SVG')} />
+            </div>
+          </aside>
+        </>
+      );
+    }
+
+    /* ───── src/components/AssetPanel.jsx ───── */
+    /** cafe On 이미지 아이콘 상세 패널 */
+    function AssetPanel({
+      item,
+      size,
+      strokeWidth,
+      customTags,
+      onAddTags,
+      onRemoveTag,
+      onClose,
+      onCopy,
+      onToast,
+      onRemove,
+    }) {
+      const [{ status, url, meta, bytes }, restart] = useAsset(item.url, item.blob);
+      const [bg, setBg] = useState('checker');
+      const [customBg, setCustomBg] = useState('#4f46e5');
+      const [natural, setNatural] = useState(null);
+
+      const path = `icon/${item.file}`;
+      const varName =
+        (item.name.replace(/[^a-zA-Z0-9]+(.)?/g, (_, c) => (c ? c.toUpperCase() : '')) || 'my') +
+        'Icon';
+
+      const htmlSnippet = `<img src="${path}" alt="${item.name}" width="${size}" height="${size}" />`;
+      const jsxSnippet =
+        `import ${varName} from '../../${path}';\n\n` +
+        `<img src={${varName}} alt="${item.name}" width={${size}} height={${size}} />`;
+
+      return (
+        <>
+          <div className="scrim" onClick={onClose} />
+          <aside className="panel" role="dialog" aria-label={`${item.file} 상세`}>
+            <div className="panel-head">
+              <img src={url} alt="" width={20} height={20} style={{ objectFit: 'contain' }} />
+              <span className="title">{item.file}</span>
+              <span className="spacer" />
+              <button className="icon-btn" onClick={onClose} aria-label="닫기">
+                <Icon name="x" size={17} />
+              </button>
+            </div>
+
+            <div className="panel-body">
+              <div {...stageProps(bg, customBg)}>
+                <img
+                  src={url}
+                  alt={item.name}
+                  onLoad={(e) =>
+                    setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })
+                  }
+                  style={{ width: Math.max(size, 72), height: Math.max(size, 72), objectFit: 'contain' }}
+                />
+              </div>
+
+              <BgPicker value={bg} custom={customBg} onChange={setBg} onCustom={setCustomBg} />
+
+              <div className="demo-row" style={{ marginTop: 10 }}>
+                <button className="demo-btn sm" onClick={restart}>
+                  <Icon name="play" size={13} strokeWidth={strokeWidth} /> 처음부터
+                </button>
+                {onRemove && (
+                  <button className="demo-btn sm ghost" onClick={onRemove}>
+                    <Icon name="trash" size={13} strokeWidth={strokeWidth} /> 목록에서 제거
+                  </button>
+                )}
+              </div>
+
+              <dl className="meta">
+                <dt>분류</dt>
+                <dd>{CAFE}</dd>
+                <dt>원본</dt>
+                <dd>{natural ? `${natural.w} × ${natural.h}px` : '…'}</dd>
+                <dt>용량</dt>
+                <dd>{bytes != null ? formatBytes(bytes) : status === 'limited' ? '측정 불가' : '…'}</dd>
+                {meta && (
+                  <>
+                    <dt>프레임</dt>
+                    <dd>
+                      {meta.frames}장 · {(meta.durationMs / 1000).toFixed(1)}초
+                    </dd>
+                  </>
+                )}
+                <dt>경로</dt>
+                <dd>
+                  <code>{item.dropped ? '(드래그해 추가한 파일)' : path}</code>
+                </dd>
+              </dl>
+
+              <div className="section-label">태그</div>
+              <TagEditor
+                custom={customTags}
+                onAdd={onAddTags}
+                onRemove={onRemoveTag}
+                onCopy={() => {
+                  const code = `tags: [${customTags.map((t) => `'${t}'`).join(', ')}],`;
+                  onCopy(code, 'tags 배열');
+                }}
+              />
+
+              <div className="section-label">크기별 렌더링</div>
+              <div className="sizes-strip">
+                {SIZE_LADDER.slice(0, 6).map((s) => (
+                  <figure key={s}>
+                    <img src={url} alt="" style={{ width: s, height: s, objectFit: 'contain' }} />
+                    <figcaption>{s}</figcaption>
+                  </figure>
+                ))}
+              </div>
+
+              <div className="section-label">크기 변환 · 내보내기</div>
+              <ExportBox item={item} url={url} size={size} onToast={onToast} />
+
+              <div className="section-label">HTML</div>
+              <CodeBlock code={htmlSnippet} onCopy={() => onCopy(htmlSnippet, 'HTML')} />
+
+              <div className="section-label">React</div>
+              <CodeBlock code={jsxSnippet} onCopy={() => onCopy(jsxSnippet, 'JSX')} />
+
+              {item.dropped && (
+                <p className="hint">
+                  드래그해 추가한 파일은 새로고침하면 사라집니다. 계속 쓰려면 <code>icon/</code> 폴더에
+                  넣어 두세요.
+                </p>
+              )}
+            </div>
+          </aside>
+        </>
+      );
+    }
+
+    /* ───── src/app/App.jsx ───── */
+    /**
+     * 아이콘 컴포넌트 테스터 — 앱 셸
+     * 상태(검색·툴바·선택·에셋)를 들고 components/ 의 조각들을 조립한다.
+     */
+    function App() {
+      const [theme, toggleTheme] = useTheme();
+      const [toast, showToast] = useToast();
+      const { customTags, addTags, removeTag } = useCustomTags(showToast);
+
+      const [query, setQuery] = useState('');
+      const [category, setCategory] = useState('전체');
+      const [size, setSize] = useState(DEFAULTS.size);
+      const [strokeWidth, setStrokeWidth] = useState(DEFAULTS.strokeWidth);
+      const [color, setColor] = useState(DEFAULTS.color);
+      const [customColor, setCustomColor] = useState('#4f46e5');
+      const [pixelGrid, setPixelGrid] = useState(false);
+      const [selected, setSelected] = useState(null); // { type: 'icon' | 'asset', ... }
+      const [extraAssets, setExtraAssets] = useState([]);
+      const [dragging, setDragging] = useState(false);
+
+      const searchRef = useRef(null);
+      const dragDepth = useRef(0);
+
+      /* 단축키: "/" 검색 포커스, Esc 패널 닫기 (입력 중에는 방해하지 않음) */
+      useEffect(() => {
+        const onKey = (e) => {
+          const el = document.activeElement;
+          const typing =
+            el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+
+          if (e.key === '/' && !typing) {
+            e.preventDefault();
+            searchRef.current?.focus();
+            return;
+          }
+          if (e.key === 'Escape') {
+            if (typing && el !== searchRef.current) el.blur();
+            else if (selected) setSelected(null);
+            else if (el === searchRef.current) el.blur();
+          }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [selected]);
+
+      const copy = useCallback(
+        (text, label) => {
+          copyText(text);
+          showToast(`${label} 복사됨`);
+        },
+        [showToast]
+      );
+
+      const resetControls = useCallback(() => {
+        setSize(DEFAULTS.size);
+        setStrokeWidth(DEFAULTS.strokeWidth);
+        setColor(DEFAULTS.color);
+        setPixelGrid(false);
+      }, []);
+
+      /* ── cafe On : 사용자 이미지 아이콘 ───────── */
+      const assets = useMemo(() => [...ANIMATED_ICONS, ...extraAssets], [extraAssets]);
+
+      const addFiles = useCallback(
+        (fileList) => {
+          const added = [...(fileList || [])]
+            .filter((f) => f.type.startsWith('image/') || IMAGE_EXT.test(f.name))
+            .map((f) => ({
+              name: f.name.replace(/\.[^.]+$/, ''),
+              file: f.name,
+              url: URL.createObjectURL(f),
+              blob: f,
+              dropped: true,
+            }));
+          if (!added.length) {
+            showToast('이미지 파일만 추가할 수 있습니다');
+            return;
+          }
+          setExtraAssets((prev) => [...prev, ...added]);
+          setCategory(CAFE);
+          showToast(`${added.length}개 파일 추가됨`);
+        },
+        [showToast]
+      );
+
+      const removeAsset = useCallback((item) => {
+        setExtraAssets((prev) => prev.filter((x) => x !== item));
+        if (item.url?.startsWith('blob:')) URL.revokeObjectURL(item.url);
+        setSelected((s) => (s?.type === 'asset' && s.item === item ? null : s));
+      }, []);
+
+      /* 페이지 어디에 놓아도 파일이 추가되도록 */
+      const dropHandlers = {
+        onDragEnter: (e) => {
+          if (![...e.dataTransfer.types].includes('Files')) return;
+          dragDepth.current += 1;
+          setDragging(true);
+        },
+        onDragOver: (e) => {
+          if ([...e.dataTransfer.types].includes('Files')) e.preventDefault();
+        },
+        onDragLeave: () => {
+          dragDepth.current = Math.max(0, dragDepth.current - 1);
+          if (dragDepth.current === 0) setDragging(false);
+        },
+        onDrop: (e) => {
+          e.preventDefault();
+          dragDepth.current = 0;
+          setDragging(false);
+          addFiles(e.dataTransfer.files);
+        },
+      };
+
+      /* 검색 + 분류 필터 */
+      const results = useMemo(() => {
+        if (category === CAFE) return [];
+        const q = query.trim().toLowerCase();
+        return ALL_NAMES.filter((name) => {
+          const icon = ICONS[name];
+          if (category !== '전체' && icon.category !== category) return false;
+          if (!q) return true;
+          return (
+            name.includes(q) ||
+            icon.category.toLowerCase().includes(q) ||
+            icon.tags.some((t) => t.toLowerCase().includes(q)) ||
+            (customTags[name] || []).some((t) => t.toLowerCase().includes(q))
+          );
+        });
+      }, [query, category, customTags]);
+
+      const assetResults = useMemo(() => {
+        if (category !== '전체' && category !== CAFE) return [];
+        const q = query.trim().toLowerCase();
+        if (!q) return assets;
+        return assets.filter(
+          (a) =>
+            a.name.toLowerCase().includes(q) ||
+            a.file.toLowerCase().includes(q) ||
+            (customTags['@' + a.file] || []).some((t) => t.toLowerCase().includes(q))
+        );
+      }, [query, category, assets, customTags]);
+
+      const total = results.length + assetResults.length;
+
+      const counts = useMemo(() => {
+        const map = { 전체: ALL_NAMES.length + assets.length, [CAFE]: assets.length };
+        for (const n of ALL_NAMES) map[ICONS[n].category] = (map[ICONS[n].category] || 0) + 1;
+        return map;
+      }, [assets.length]);
+
+      return (
+        <div className={`app${dragging ? ' dropping' : ''}`} {...dropHandlers}>
+          {dragging && <DropOverlay />}
+
+          <Masthead count={ALL_NAMES.length} theme={theme} onToggleTheme={toggleTheme} />
+
+          <Toolbar
+            searchRef={searchRef}
+            query={query}
+            onQuery={setQuery}
+            size={size}
+            onSize={setSize}
+            strokeWidth={strokeWidth}
+            onStrokeWidth={setStrokeWidth}
+            color={color}
+            onColor={setColor}
+            customColor={customColor}
+            onCustomColor={setCustomColor}
+            pixelGrid={pixelGrid}
+            onPixelGrid={setPixelGrid}
+            onReset={resetControls}
+            category={category}
+            onCategory={setCategory}
+            counts={counts}
+            onAddFiles={addFiles}
+          />
+
+          <div className="result-line">
+            <b>{total}</b>
+            <span>개 표시 중</span>
+            {assetResults.length > 0 && <span>· cafe On {assetResults.length}개 포함</span>}
+            {query && <span>· 검색어 “{query}”</span>}
+            <span style={{ marginLeft: 'auto' }}>아이콘을 클릭하면 코드를 복사할 수 있습니다</span>
+          </div>
+
+          {total === 0 ? (
+            <EmptyState category={category} query={query} />
+          ) : (
+            <IconGrid
+              names={results}
+              assets={assetResults}
+              size={size}
+              iconProps={{ size, strokeWidth, color }}
+              pixelGrid={pixelGrid}
+              selected={selected}
+              onSelect={setSelected}
+            />
+          )}
+
+          {selected?.type === 'icon' && (
+            <DetailPanel
+              name={selected.name}
+              size={size}
+              strokeWidth={strokeWidth}
+              color={color}
+              customTags={customTags[selected.name] || []}
+              onAddTags={(raw) => addTags(selected.name, raw)}
+              onRemoveTag={(tag) => removeTag(selected.name, tag)}
+              onClose={() => setSelected(null)}
+              onCopy={copy}
+            />
+          )}
+          {selected?.type === 'asset' && (
+            <AssetPanel
+              item={selected.item}
+              size={size}
+              strokeWidth={strokeWidth}
+              customTags={customTags['@' + selected.item.file] || []}
+              onAddTags={(raw) => addTags('@' + selected.item.file, raw)}
+              onRemoveTag={(tag) => removeTag('@' + selected.item.file, tag)}
+              onClose={() => setSelected(null)}
+              onCopy={copy}
+              onToast={showToast}
+              onRemove={selected.item.dropped ? () => removeAsset(selected.item) : undefined}
+            />
+          )}
+
+          <Toast message={toast} />
+        </div>
+      );
+    }
+
+    /* ───── src/app/main.jsx 대체 ───── */
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

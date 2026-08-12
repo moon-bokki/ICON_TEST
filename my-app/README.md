@@ -26,10 +26,9 @@ npm run dev
 ## 파일 구조
 
 ```
-아이콘 컴포넌트/
+my-app/
 ├─ standalone.html      ← 더블클릭 실행 (자동 생성물, 직접 수정 금지)
-├─ icons.js             ← standalone 용 아이콘 데이터 (window.ICONS)
-├─ build-standalone.js  ← src/*.jsx → standalone.html 생성기
+├─ build-standalone.js  ← src/ → standalone.html 생성기
 ├─ index.html           ← Vite 진입점
 ├─ package.json
 ├─ vite.config.js
@@ -37,22 +36,43 @@ npm run dev
 │  ├─ home.gif
 │  └─ ...
 └─ src/
-   ├─ main.jsx
-   ├─ icons.js            ← 아이콘 데이터 (ESM)
-   ├─ Icon.jsx            ← ★ 재사용 컴포넌트
-   ├─ IconTester.jsx      ← 테스트 페이지 UI
-   ├─ assetUtils.js       ← GIF 파싱 · 에셋 로더 · 리사이즈/내보내기
-   ├─ animatedIcons.js    ← icon/ 폴더 자동 수집
-   └─ styles.css          ← 두 버전이 공유
+   ├─ app/                 ← 앱 셸: 상태·조립·전역 설정
+   │  ├─ main.jsx             ← 진입점 (createRoot)
+   │  ├─ App.jsx              ← 검색·필터·선택 상태를 들고 컴포넌트를 조립
+   │  ├─ constants.js         ← 분류 목록 · 색상 프리셋 · 기본값
+   │  └─ hooks.js             ← useTheme · useToast · useCustomTags
+   ├─ components/          ← 화면 조각 (상태는 props 로만 받음)
+   │  ├─ Icon.jsx             ← ★ 재사용 아이콘 컴포넌트
+   │  ├─ Masthead.jsx         ← 헤더 + 테마 전환
+   │  ├─ Toolbar.jsx          ← 검색 · 크기/두께/색상 · 분류 칩
+   │  ├─ IconGrid.jsx         ← 아이콘 그리드 + 빈 상태(EmptyState)
+   │  ├─ DetailPanel.jsx      ← 라인 아이콘 상세
+   │  ├─ AssetPanel.jsx       ← cafe On 이미지 아이콘 상세
+   │  ├─ BgPicker.jsx         ← 미리보기 배경 선택
+   │  ├─ TagEditor.jsx        ← 태그 추가·삭제
+   │  ├─ ExportBox.jsx        ← 크기 변환 · 내보내기
+   │  ├─ CodeBlock.jsx        ← 복사 버튼이 달린 코드 블록
+   │  ├─ DropOverlay.jsx      ← 드래그 앤 드롭 안내
+   │  └─ Toast.jsx            ← 알림
+   ├─ data/                ← 데이터
+   │  ├─ icons.js             ← 아이콘 데이터셋 (단일 소스)
+   │  └─ animatedIcons.js     ← icon/ 폴더 자동 수집
+   ├─ lib/                 ← UI 와 무관한 순수 유틸
+   │  ├─ assetUtils.js        ← GIF 파싱 · 에셋 로더 · 리사이즈/내보내기
+   │  ├─ clipboard.js         ← 복사 (file:// 폴백 포함)
+   │  └─ stage.js             ← 미리보기 배경 · 대비 글자색 계산
+   └─ styles/
+      └─ styles.css        ← 두 버전이 공유
 ```
 
-> `icons.js`(루트)와 `src/icons.js` 는 같은 데이터의 전역/ESM 버전입니다.
-> 아이콘을 추가하면 **두 파일 모두** 수정한 뒤 `npm run standalone` 을 실행하세요.
+> 아이콘 데이터는 `src/data/icons.js` 하나뿐입니다. standalone 은
+> `build-standalone.js` 가 이 파일을 그대로 인라인하므로, 수정 후
+> `npm run standalone` 만 실행하면 됩니다.
 
 ## Icon 컴포넌트 사용법
 
 ```jsx
-import Icon from './Icon';
+import Icon from './components/Icon';
 
 <Icon name="search" />
 <Icon name="loader" size={20} spin />
@@ -92,7 +112,7 @@ import Icon from './Icon';
   그대로 확인할 수 있습니다.
 - **태그 편집** — 상세 패널에서 검색용 태그를 직접 추가할 수 있습니다.
   Enter 로 추가, 쉼표로 여러 개 한 번에, `×` 로 삭제. 추가한 태그는 이 브라우저
-  (localStorage)에 저장되고 검색에 바로 반영됩니다. `icons.js` 의 기본 태그는 고정이며,
+  (localStorage)에 저장되고 검색에 바로 반영됩니다. `src/data/icons.js` 의 기본 태그는 고정이며,
   **icons.js 용 tags 복사** 버튼으로 `tags: [...]` 배열을 만들어 소스에 영구 반영할 수
   있습니다. cafe On 의 이미지 아이콘에도 같은 방식으로 태그를 붙일 수 있습니다.
 
@@ -119,7 +139,7 @@ import Icon from './Icon';
 
 ## 아이콘 추가하기
 
-`src/icons.js` (와 루트 `icons.js`) 에 항목을 추가합니다.
+`src/data/icons.js` 에 항목을 추가합니다.
 
 ```js
 'my-icon': {

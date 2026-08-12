@@ -1,5 +1,5 @@
-import { forwardRef, useMemo } from 'react';
-import { ICONS } from './icons';
+import { forwardRef, useMemo } from "react";
+import { ICONS } from "../data/icons";
 
 /**
  * 아이콘 컴포넌트
@@ -26,27 +26,27 @@ const Icon = forwardRef(function Icon(
     name,
     size = 24,
     strokeWidth = 1.75,
-    color = 'currentColor',
+    color = "currentColor",
     title,
     spin = false,
     pulse = false,
     rotate = 0,
     flip,
     absoluteStrokeWidth = false,
-    className = '',
+    className = "",
     style,
     ...rest
   },
-  ref
+  ref,
 ) {
   const icon = ICONS[name];
 
   const transform = useMemo(() => {
     const t = [];
     if (rotate) t.push(`rotate(${rotate}deg)`);
-    if (flip === 'x' || flip === 'xy') t.push('scaleX(-1)');
-    if (flip === 'y' || flip === 'xy') t.push('scaleY(-1)');
-    return t.length ? t.join(' ') : undefined;
+    if (flip === "x" || flip === "xy") t.push("scaleX(-1)");
+    if (flip === "y" || flip === "xy") t.push("scaleY(-1)");
+    return t.length ? t.join(" ") : undefined;
   }, [rotate, flip]);
 
   if (!icon) {
@@ -54,13 +54,19 @@ const Icon = forwardRef(function Icon(
     return null;
   }
 
-  const numeric = typeof size === 'number' || /^\d+(\.\d+)?$/.test(String(size));
+  const numeric =
+    typeof size === "number" || /^\d+(\.\d+)?$/.test(String(size));
   const px = numeric ? Number(size) : null;
   const sw = absoluteStrokeWidth && px ? (strokeWidth * 24) / px : strokeWidth;
 
-  const cls = ['ui-icon', spin && 'ui-icon-spin', pulse && 'ui-icon-pulse', className]
+  const cls = [
+    "ui-icon",
+    spin && "ui-icon-spin",
+    pulse && "ui-icon-pulse",
+    className,
+  ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 
   return (
     <svg
@@ -75,12 +81,12 @@ const Icon = forwardRef(function Icon(
       strokeWidth={sw}
       strokeLinecap="round"
       strokeLinejoin="round"
-      role={title ? 'img' : undefined}
+      role={title ? "img" : undefined}
       aria-hidden={title ? undefined : true}
       focusable="false"
-      style={{ display: 'block', flex: 'none', transform, ...style }}
+      style={{ display: "block", flex: "none", transform, ...style }}
       dangerouslySetInnerHTML={{
-        __html: (title ? `<title>${escapeXml(title)}</title>` : '') + icon.body,
+        __html: (title ? `<title>${escapeXml(title)}</title>` : "") + icon.body,
       }}
       {...rest}
     />
@@ -88,18 +94,24 @@ const Icon = forwardRef(function Icon(
 });
 
 function escapeXml(s) {
-  return String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  return String(s).replace(
+    /[<>&"]/g,
+    (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c],
+  );
 }
 
 /** 아이콘 하나를 독립 실행 가능한 SVG 문자열로 반환 */
-export function toSvgString(name, { size = 24, strokeWidth = 1.75, color = 'currentColor' } = {}) {
+export function toSvgString(
+  name,
+  { size = 24, strokeWidth = 1.75, color = "currentColor" } = {},
+) {
   const icon = ICONS[name];
-  if (!icon) return '';
+  if (!icon) return "";
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" ` +
     `fill="none" stroke="${color}" stroke-width="${strokeWidth}" ` +
     `stroke-linecap="round" stroke-linejoin="round">` +
-    icon.body.replace(/\/><path/g, '/>\n  <path').replace(/^</, '\n  <') +
+    icon.body.replace(/\/><path/g, "/>\n  <path").replace(/^</, "\n  <") +
     `\n</svg>`
   );
 }
