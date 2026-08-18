@@ -1,5 +1,5 @@
 import Icon from './Icon';
-import { CAFE } from '../app/constants';
+import { CAFE, HIDDEN } from '../app/constants';
 
 /**
  * 아이콘 그리드
@@ -11,10 +11,14 @@ export default function IconGrid({
   size,
   iconProps,
   pixelGrid,
+  dimmed,
   selected,
   onSelect,
 }) {
   if (names.length + assets.length === 0) return null;
+
+  /** 삭제한 아이콘 목록(숨김)을 볼 때는 흐리게 보여 준다 */
+  const extra = `${pixelGrid ? ' pixelgrid' : ''}${dimmed ? ' dimmed' : ''}`;
 
   return (
     <div
@@ -26,7 +30,7 @@ export default function IconGrid({
       {assets.map((item) => (
         <button
           key={item.url}
-          className={`cell asset${pixelGrid ? ' pixelgrid' : ''}`}
+          className={`cell asset${extra}`}
           aria-selected={selected?.type === 'asset' && selected.item === item}
           onClick={() => onSelect({ type: 'asset', item })}
           title={`${item.file} — 클릭하면 상세 보기`}
@@ -47,7 +51,7 @@ export default function IconGrid({
       {names.map((name) => (
         <button
           key={name}
-          className={`cell${pixelGrid ? ' pixelgrid' : ''}`}
+          className={`cell${extra}`}
           aria-selected={selected?.type === 'icon' && selected.name === name}
           onClick={() => onSelect({ type: 'icon', name })}
           title={`${name} — 클릭하면 상세 보기`}
@@ -64,6 +68,14 @@ export default function IconGrid({
 
 /** 검색 결과가 없을 때 */
 export function EmptyState({ category, query }) {
+  if (category === HIDDEN) {
+    return (
+      <div className="empty">
+        <div className="big">삭제한 아이콘이 없습니다</div>
+        <div>상세 패널의 삭제 버튼으로 목록에서 감춘 아이콘이 여기 모입니다.</div>
+      </div>
+    );
+  }
   if (category === CAFE && !query) {
     return (
       <div className="empty">

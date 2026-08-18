@@ -299,6 +299,89 @@ input { font: inherit; }
 .tag-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .tag-form button[disabled] { opacity: 0.45; cursor: default; }
 
+/* ── 분류 이동 ───────────────────────────── */
+.category-picker { display: flex; flex-direction: column; gap: 9px; }
+.category-row { display: flex; gap: 6px; align-items: center; }
+.category-select {
+  flex: 1; min-width: 0; height: 32px; padding: 0 10px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text); outline: none;
+  font-size: 12.5px; font-family: inherit;
+}
+.category-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* ── SVG 아이콘 추가 대화상자 ─────────────── */
+.dialog {
+  position: fixed; z-index: 50;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(88vh, 900px);
+  display: flex; flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 24px 60px rgba(8, 10, 14, 0.28);
+  animation: pop 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes pop { from { transform: translate(-50%, -46%); opacity: 0; } }
+
+.dialog-body { flex: 1; overflow-y: auto; padding: 16px; }
+.dialog-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+.dialog-hint { margin: 0 0 0 auto; }
+.dialog-foot {
+  display: flex; justify-content: flex-end; gap: 8px;
+  margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border);
+}
+.dialog-foot .demo-btn[disabled] { opacity: 0.45; cursor: default; }
+
+.svg-input {
+  width: 100%; min-height: 108px; padding: 10px 12px; margin-bottom: 8px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface-2); color: var(--text); outline: none; resize: vertical;
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.6;
+}
+.svg-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.dialog-input {
+  flex: 1; min-width: 140px; height: 32px; padding: 0 10px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text); outline: none;
+  font-size: 12.5px; font-family: inherit;
+}
+.dialog-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.import-preview {
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
+  padding: 16px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface-2);
+}
+.import-preview figure { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0; }
+.import-preview figcaption { font-family: var(--mono); font-size: 10.5px; color: var(--text-faint); }
+.import-meta { margin-left: auto; font-size: 11.5px; color: var(--text-faint); }
+.preview-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.preview-controls .control,
+.preview-controls .swatches { height: 34px; }
+.preview-controls .control input[type='range'] { width: 84px; }
+.preview-controls .control input[type='range']:disabled { opacity: 0.4; }
+.import-warn, .import-error { display: flex; align-items: flex-start; gap: 5px; margin: 8px 0 0; }
+.import-error { color: var(--danger); }
+
+/* ── 삭제 · 복원 ─────────────────────────── */
+.chip.hidden-chip { border-style: dashed; color: var(--text-faint); }
+.chip.hidden-chip:hover { border-color: var(--danger); color: var(--danger); }
+.chip.hidden-chip[aria-pressed='true'] {
+  background: var(--danger); border-color: var(--danger); color: #fff;
+}
+.cell.dimmed { opacity: 0.5; }
+.cell.dimmed:hover { opacity: 1; border-color: var(--danger); }
+
+.demo-btn.danger { color: var(--danger); }
+.demo-btn.danger:hover { border-color: var(--danger); }
+.demo-btn.sm.danger:not(.ghost) { background: var(--danger); border-color: var(--danger); color: #fff; }
+.confirm-row {
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--danger);
+}
+
 /* ── 크기 변환 · 내보내기 ────────────────── */
 .export-box { display: flex; flex-direction: column; gap: 10px; }
 .export-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

@@ -110,6 +110,25 @@ import Icon from './components/Icon';
   브랜드 / 사진 6종 중에 고르거나 **직접** 색을 지정할 수 있습니다. 직접 지정 시 배경 밝기를
   계산해 글자색을 자동으로 맞추므로, `currentColor` 아이콘이 어떤 배경에서든 보이는지
   그대로 확인할 수 있습니다.
+- **SVG 아이콘 추가** — 툴바의 **+ SVG 아이콘 추가** 버튼으로 코드를 붙여넣거나 `.svg` 파일을
+  선택하면 라인 아이콘으로 바로 등록됩니다. `<svg>` 껍데기와 `fill`·`stroke` 속성을 자동으로
+  걷어내고, `viewBox` 가 24×24 가 아니면 배율을 계산해 맞춥니다. 추가하기 전에 대화상자 안에서
+  **선 두께(0.5~3)와 색상을 바꿔가며** 16·24·32·48px 미리보기로 확인할 수 있습니다.
+  채움(fill) 아이콘은
+  `currentColor` 로 칠하도록 처리하고, 스크립트·이벤트 핸들러는 제거합니다. 추가한 아이콘은
+  툴바의 색상·두께 조절이 그대로 적용되고 이 브라우저(localStorage)에 저장되며, 상세 패널에서
+  삭제할 수 있습니다. **icons.js 에 넣을 코드**가 함께 만들어지므로 소스에 영구 반영도 쉽습니다.
+- **아이콘 삭제 · 복원** — 상세 패널의 **삭제** 버튼으로 아이콘을 목록에서 없앨 수 있습니다.
+  기본 아이콘과 `icon/` 폴더의 이미지는 소스를 건드리지 않고 **감추는** 방식이라, 툴바에 나타나는
+  **숨김** 칩에서 하나씩 또는 **모두 복원**으로 되돌릴 수 있습니다. 화면에서 추가한 아이콘과
+  드래그해 넣은 파일은 되돌릴 수 없으므로 **한 번 더 확인**한 뒤 완전히 삭제됩니다.
+  삭제한 아이콘은 검색·분류·개수에서 모두 빠집니다.
+- **분류 이동** — 상세 패널의 **분류** 항목에서 아이콘을 다른 분류로 옮길 수 있습니다.
+  드롭다운에서 기존 분류를 고르거나 **+ 새 분류 만들기**로 없던 분류를 만들 수 있고,
+  옮기는 즉시 상단 필터 칩의 개수와 목록에 반영됩니다. **되돌리기** 버튼으로 언제든
+  `src/data/icons.js` 의 기본 분류로 되돌아갑니다. 변경 내용은 이 브라우저(localStorage)에
+  저장되며, **icons.js 용 category 복사** 버튼으로 소스에 영구 반영할 수 있습니다.
+  cafe On 이미지 아이콘도 같은 방식으로 일반 분류에 넣을 수 있습니다.
 - **태그 편집** — 상세 패널에서 검색용 태그를 직접 추가할 수 있습니다.
   Enter 로 추가, 쉼표로 여러 개 한 번에, `×` 로 삭제. 추가한 태그는 이 브라우저
   (localStorage)에 저장되고 검색에 바로 반영됩니다. `src/data/icons.js` 의 기본 태그는 고정이며,
@@ -151,3 +170,266 @@ import Icon from './components/Icon';
 ```
 
 그 다음 `npm run standalone` 으로 standalone.html 을 다시 만듭니다.
+
+배포
+길 B — 터미널에서 (막히면 이쪽, 2분)
+웹에서 계속 막히면 이게 확실합니다. VSCode 터미널에 그대로 입력하세요.
+
+cd my-app
+npx vercel
+처음 실행하면 질문이 순서대로 나옵니다. 이렇게 답하세요:
+
+질문 답
+Set up and deploy "…my-app"? y + Enter
+Which scope do you want to deploy to? Enter (본인 계정)
+Link to existing project? n + Enter
+What's your project name? Enter (my-app 그대로) 또는 원하는 이름
+In which directory is your code located? Enter (./ 그대로)
+Want to modify these settings? n + Enter
+맨 처음에는 로그인 안내가 뜹니다. 브라우저가 열리면 GitHub으로 로그인 승인만 해주세요.
+
+끝나면 터미널에 배포 주소가 찍힙니다. 정식 배포는:
+
+npx vercel --prod
+이 방법은 my-app 폴더 안에서 실행하니까 Root Directory 문제도 없고, GitHub 연동 문제도 안 겪습니다.
+
+둘 중 편한 쪽으로 해보시고, 화면에 나온 내용(에러든 성공이든)을 그대로 알려주세요. 길 B로 하신다면 터미널 출력을 복사해 붙여주시면 바로 다음 단계 짚어드리겠습니다.
+
+길 B 로 베포하는 방법을 한 단계식 알려줘
+CLI 배포를 처음부터 끝까지 안내드릴게요. 먼저 환경을 확인해두겠습니다.
+
+Bash Check node and pre-fetch vercel CLI
+IN
+cd "d:/HTML/아이콘 컴포넌트/my-app" && node -v && timeout 180 npx --yes vercel --version 2>&1 | tail -3
+
+OUT
+v24.14.1
+Vercel CLI 59.0.0
+59.0.0
+Edit d:\HTML\아이콘 컴포넌트\my-app\.gitignore
+Added 1 line
+준비는 제가 미리 해뒀습니다. 아래 순서대로만 따라오시면 됩니다.
+
+0단계 — 준비 완료 (제가 확인함)
+항목 상태
+Node.js ✅ v24.14.1
+Vercel CLI ✅ v59.0.0 — 미리 받아뒀으니 설치 대기 없음
+빌드 정상 동작 ✅ npm run build 성공 확인
+.vercel 폴더 git 제외 ✅ .gitignore에 추가해둠
+1단계 — 터미널에서 my-app 폴더로 이동
+VSCode 터미널에 입력:
+
+cd "D:\HTML\아이콘 컴포넌트\my-app"
+확인 방법: 프롬프트 끝이 ...\my-app> 으로 바뀌면 성공입니다.
+
+PS D:\HTML\아이콘 컴포넌트\my-app>
+⚠️ 이 폴더 안에서 실행하는 게 핵심입니다. 그래야 Root Directory 문제가 아예 안 생깁니다.
+
+2단계 — Vercel 로그인
+
+npx vercel login
+이런 목록이 나옵니다:
+
+? Log in to Vercel
+❯ Continue with GitHub
+Continue with GitLab
+Continue with Bitbucket
+Continue with Email
+Continue with SAML Single Sign-On
+↑ ↓ 화살표 키로 Continue with GitHub 선택 → Enter
+브라우저가 자동으로 열립니다 → Authorize / 승인 클릭
+터미널에 아래가 뜨면 성공:
+
+> Success! GitHub authentication complete
+> Congratulations! You are now logged in.
+> 브라우저가 안 열리면, 터미널에 나온 주소를 직접 복사해서 브라우저에 붙여넣으세요.
+
+3단계 — 배포 실행
+
+npx vercel
+질문이 순서대로 나옵니다. 표대로만 답하세요:
+
+순서 화면에 나오는 질문 입력
+1 Set up and deploy "D:\...\my-app"? y → Enter
+2 Which scope do you want to deploy to? 그냥 Enter (본인 계정 선택됨)
+3 Link to existing project? n → Enter
+4 What's your project name? 그냥 Enter (my-app) — 원하는 이름을 써도 됨
+5 In which directory is your code located? 그냥 Enter (./)
+6 Want to modify these settings? n → Enter
+6번에서 이런 화면이 먼저 뜹니다. Vite로 잘 잡혔는지만 눈으로 확인하고 n 누르시면 됩니다.
+
+Auto-detected Project Settings (Vite):
+
+- Build Command: npm run build
+- Output Directory: dist
+- Development Command: vite --port $PORT
+  4단계 — 결과 확인
+  빌드가 돌아가고 이렇게 끝납니다:
+
+🔍 Inspect: https://vercel.com/jaccko/my-app/xxxxx
+✅ Preview: https://my-app-xxxxx.vercel.app [30s]
+Preview: 뒤의 주소를 브라우저에 붙여넣으면 아이콘 테스터가 뜹니다. (터미널에서 주소를 Ctrl + 클릭해도 열립니다.)
+
+여기까지가 미리보기 배포입니다.
+
+5단계 — 정식(프로덕션) 배포
+미리보기가 잘 뜨는 걸 확인했으면:
+
+npx vercel --prod
+
+✅ Production: https://my-app.vercel.app [25s]
+이 주소가 남들에게 공유할 최종 주소입니다. 끝났습니다.
+
+앞으로 코드를 고쳤을 때
+
+cd "D:\HTML\아이콘 컴포넌트\my-app"
+npx vercel --prod
+이 두 줄이면 됩니다. (로그인은 한 번만 하면 계속 유지됩니다.)
+
+막힐 때
+증상 해결
+Error: No existing credentials found 2단계 로그인부터 다시
+Command "npm run build" exited with 1 빌드 실패 — 터미널 출력을 저에게 그대로 붙여주세요
+질문이 안 나오고 바로 끝남 이미 링크된 상태. npx vercel --prod 로 바로 진행
+화살표 선택이 안 먹힘 VSCode 터미널 대신 PowerShell 앱을 직접 열어서 시도
+2단계부터 시작해서, 막히는 지점의 터미널 출력을 그대로 복사해 주세요. 바로 짚어드리겠습니다.
+
+image.png
+527×192
+다음은?
+로그인 완료됐습니다. 이제 배포만 하면 됩니다.
+
+다음 — 이 명령 하나
+
+npx vercel
+나오는 질문에 이렇게 답하세요
+질문 입력
+Set up and deploy ...my-app? y → Enter
+Which scope ...? 그냥 Enter
+Link to existing project? n → Enter
+What's your project name? 그냥 Enter
+In which directory is your code located? 그냥 Enter
+Want to modify these settings? n → Enter
+마지막 질문 직전에 이 화면이 뜨는데, Vite 라고 잡혔는지만 확인하고 n 누르시면 됩니다.
+
+Auto-detected Project Settings (Vite):
+
+- Build Command: npm run build
+- Output Directory: dist
+  성공하면
+
+✅ Preview: https://my-app-xxxxx.vercel.app [30s]
+이 주소를 브라우저에서 열어 아이콘 테스터가 뜨는지 확인하고, 잘 나오면 마지막으로:
+
+npx vercel --prod
+이걸 실행하면 정식 주소가 나옵니다.
+
+터미널 출력 그대로 보여주시면 이어서 봐드릴게요.
+
+image.png
+379×189
+다음은?
+화면이 CLI 최신 버전이라 조금 다르게 나왔네요. 확인부터:
+
+Directory ...\my-app ✅ 맞습니다
+Team jaccko ✅ 본인 계정 맞습니다
+지금 할 것
+↓ 아래 방향키를 한 번 눌러 Create a new project 로 옮긴 뒤 → Enter
+
+? Which project?
+Search all projects
+❯ Create a new project ← 여기로 이동해서 Enter
+Search all projects는 기존 프로젝트에 연결하는 메뉴입니다. 지금은 처음 만드는 거니 아래쪽을 골라야 합니다.
+
+그 다음 이어질 질문
+질문 입력
+What's your project name? 그냥 Enter (my-app)
+In which directory is your code located? 그냥 Enter (./)
+Want to modify these settings? n → Enter
+마지막 질문 전에 Auto-detected Project Settings (Vite) 가 뜨는지만 눈으로 확인하세요.
+
+진행하시고 다음 화면 보여주세요.
+
+image.png
+356×233
+어떻게 해야 하나?
+실수로 Search all projects(기존 프로젝트 목록)로 들어가셨습니다. 지금 보이는 movie, fake-blog, mobile-nvitation은 예전에 만드신 프로젝트들이라 고르면 안 됩니다.
+
+되돌아가기
+↓ 아래 방향키를 계속 눌러 맨 아래 Back to project options 로 이동 → Enter
+
+movie
+fake-blog
+mobile-nvitation
+─────────────────────
+❯ Back to project options ← 여기까지 내려서 Enter
+그러면 처음 화면으로 돌아옵니다. 거기서:
+
+Search all projects
+❯ Create a new project ← 이번엔 이걸로 Enter
+더 간단한 방법
+헷갈리면 그냥 취소하고 다시 시작해도 됩니다.
+
+Ctrl + C 눌러서 취소
+
+npx vercel
+Which project? 가 나오면 ↓ 한 번 눌러 Create a new project → Enter
+💡 핵심: 첫 화면에서 Enter를 바로 누르지 말고, 반드시 ↓ 한 번 누른 뒤 Enter 입니다.
+
+이후 질문은 전부 Enter, 마지막 Want to modify these settings? 만 n 입니다.
+
+image.png
+440×172
+다음은?
+거의 다 왔습니다. 지금은 프로젝트 이름을 묻고 있습니다. 괄호 안 (my-app)이 기본값입니다.
+
+지금 할 것
+이 이름이 곧 배포 주소가 됩니다 (https://이름.vercel.app). 둘 중 하나 고르세요:
+
+선택 방법 결과 주소
+그대로 쓰기 그냥 Enter my-app-xxxx.vercel.app
+이름 바꾸기 (추천) icon-tester 입력 후 Enter icon-tester.vercel.app
+my-app은 너무 일반적이라 나중에 프로젝트가 늘면 헷갈립니다. icon-tester 정도를 추천드립니다.
+
+이름 규칙: 영문 소문자 · 숫자 · 하이픈(-)만 됩니다. 한글·공백·대문자는 안 됩니다.
+
+이어서 나올 질문
+질문 입력
+In which directory is your code located? 그냥 Enter (./)
+Want to modify these settings? n → Enter
+두 번째 질문 직전에 이게 뜨는지만 확인하세요:
+
+Auto-detected Project Settings (Vite):
+
+- Build Command: npm run build
+- Output Directory: dist
+  Vite로 안 잡히고 Other로 나오면 그때는 n 대신 y 를 누르고 알려주세요.
+
+그 뒤엔 자동으로 빌드가 돌아가고 ✅ Preview: https://... 주소가 나옵니다.
+
+image.png
+493×216
+다음은?
+완벽합니다. Detected Vite 로 정확히 잡혔고, Build Command와 Output Directory(dist)도 맞습니다.
+
+지금 할 것
+n 입력 후 Enter
+
+(y/N) 에서 대문자 N이 기본값이라 그냥 Enter만 눌러도 동일하게 넘어갑니다.
+
+그 다음 자동으로 진행됩니다
+
+🔍 Inspect: https://vercel.com/jaccko/icon-tester/xxxxx
+⠙ Building...
+✅ Preview: https://icon-tester-xxxxx.vercel.app [30s]
+빌드에 20~40초 정도 걸립니다.
+
+Preview: 주소를 브라우저에서 열어 아이콘 테스터가 제대로 뜨는지 확인하세요. (터미널에서 Ctrl + 클릭해도 열립니다.)
+
+확인 후 마지막 단계
+미리보기가 잘 뜨면 정식 배포:
+
+npx vercel --prod
+여기서 나오는 ✅ Production: 주소가 최종 공유용 주소입니다.
+
+결과 화면 보여주세요.

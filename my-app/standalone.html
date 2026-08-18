@@ -448,6 +448,28 @@
     const iconNames = Object.keys(ICONS).sort();
     const categories = [...new Set(Object.values(ICONS).map((i) => i.category))];
 
+    /* ───── src/data/customIcons.js ───── */
+    /**
+     * 사용자가 화면에서 추가한 아이콘 레지스트리
+     *
+     * icons.js 는 소스에 박혀 있는 기본 아이콘이고, 여기에는 실행 중 추가한 아이콘이 담긴다.
+     * Icon 컴포넌트가 이름을 찾을 때 두 곳을 모두 뒤지도록 lookupIcon 을 쓴다.
+     * (내용 자체는 useCustomIcons 훅이 localStorage 와 동기화한다)
+     */
+
+    const CUSTOM_ICONS = {};
+
+    /** 레지스트리 내용을 map 으로 교체 — 렌더 도중 호출해도 안전하도록 같은 객체를 유지한다 */
+    function registerCustomIcons(map) {
+      for (const key of Object.keys(CUSTOM_ICONS)) delete CUSTOM_ICONS[key];
+      Object.assign(CUSTOM_ICONS, map || {});
+    }
+
+    /** 기본 아이콘 → 사용자 아이콘 순으로 찾는다 */
+    function lookupIcon(name) {
+      return ICONS[name] || CUSTOM_ICONS[name];
+    }
+
     /* ───── src/lib/clipboard.js ───── */
     /**
      * 클립보드 복사
@@ -496,6 +518,189 @@
         return { className: 'stage', style: { background: customBg, color: contrastText(customBg) } };
       }
       return { className: `stage bg-${bg}` };
+    }
+
+    /* ───── src/lib/category.js ───── */
+    /**
+     * 아이콘 분류 계산
+     *
+     * 사용자가 분류를 옮기면 override 맵에 저장되고, 원래 분류 대신 그 값을 쓴다.
+     * 키 규칙은 사용자 태그와 동일하다 — 라인 아이콘은 아이콘 이름, 이미지 아이콘은 "@파일명".
+     */
+
+    /** 이미지 아이콘의 저장 키 */
+    function assetKey(item) {
+      return '@' + item.file;
+    }
+
+    /** 라인 아이콘의 현재 분류 (옮긴 적 없으면 icons.js 의 기본 분류) */
+    function iconCategory(name, overrides = {}) {
+      return overrides[name] || lookupIcon(name)?.category;
+    }
+
+    /** 이미지 아이콘의 현재 분류 (옮긴 적 없으면 fallback — 보통 'cafe On') */
+    function assetCategory(item, overrides = {}, fallback) {
+      return overrides[assetKey(item)] || fallback;
+    }
+
+    /* ───── src/lib/svgImport.js ───── */
+    /**
+     * 붙여넣은 SVG 코드를 icons.js 의 body 형식으로 변환
+     *
+     * - <svg> 껍데기를 벗기고 안쪽 도형만 남긴다
+     * - fill/stroke 계열 속성을 걷어내 컴포넌트의 색·두께 조절이 먹도록 한다
+     * - viewBox 가 24×24 가 아니면 transform 으로 자동 보정한다
+     * - 붙여넣은 코드는 dangerouslySetInnerHTML 로 그려지므로 스크립트·이벤트 핸들러를 제거한다
+     */
+
+    /** 렌더링에 넣으면 안 되는 요소 */
+    const UNSAFE_TAGS = 'script|foreignObject|iframe|style|animate|set|handler';
+    /** 의미 없는 메타 요소 */
+    const META_TAGS = 'title|desc|metadata';
+    /** 컴포넌트가 직접 지정하므로 지워야 하는 속성 */
+    const DROP_ATTRS =
+      'fill|stroke|stroke-width|stroke-linecap|stroke-linejoin|stroke-miterlimit|stroke-dasharray|' +
+      'stroke-dashoffset|stroke-opacity|fill-opacity|opacity|class|id|style|xmlns(?::\\w+)?|' +
+      'xml:\\w+|data-[\\w-]+|on\\w+';
+    /** 최소한 하나는 있어야 하는 도형 요소 */
+    const SHAPE_TAGS = /<\s*(path|circle|rect|line|polyline|polygon|ellipse|g|use|text)\b/i;
+
+    const readAttr = (attrs, name) => {
+      const m = attrs.match(new RegExp(`\\b${name}\\s*=\\s*["']([^"']*)["']`, 'i'));
+      return m ? m[1].trim() : null;
+    };
+
+    /** 소수점 4자리까지만 — 문자열이 불필요하게 길어지는 것을 막는다 */
+    const round = (n) => Number(n.toFixed(4));
+
+    /**
+     * @param {string} input  <svg> 전체 코드 또는 도형 마크업만
+     * @returns {{ body: string, mode: 'line'|'fill', size: string, warnings: string[] }}
+     * @throws {Error} 사람이 읽을 수 있는 한국어 메시지
+     */
+    function parseSvgSource(input) {
+      let src = String(input || '').trim();
+      if (!src) throw new Error('SVG 코드를 붙여넣거나 파일을 선택해 주세요.');
+
+      const warnings = [];
+
+      /* 1. 선언 · 주석 · 위험 요소 제거 */
+      src = src
+        .replace(/<\?[\s\S]*?\?>/g, '')
+        .replace(/<!DOCTYPE[\s\S]*?>/gi, '')
+        .replace(/<!--[\s\S]*?-->/g, '');
+
+      const before = src;
+      src = src
+        .replace(new RegExp(`<\\s*(${UNSAFE_TAGS})\\b[\\s\\S]*?<\\s*/\\s*\\1\\s*>`, 'gi'), '')
+        .replace(new RegExp(`<\\s*(${UNSAFE_TAGS})\\b[^>]*/?>`, 'gi'), '');
+      if (src !== before) warnings.push('스크립트·애니메이션 요소는 안전을 위해 제거했습니다.');
+
+      src = src
+        .replace(new RegExp(`<\\s*(${META_TAGS})\\b[\\s\\S]*?<\\s*/\\s*\\1\\s*>`, 'gi'), '')
+        .replace(new RegExp(`<\\s*(${META_TAGS})\\b[^>]*/?>`, 'gi'), '');
+
+      /* 2. <svg> 껍데기 분리 */
+      const open = src.match(/<svg\b([^>]*)>/i);
+      let attrs = '';
+      let body = src;
+      if (open) {
+        attrs = open[1];
+        const close = src.lastIndexOf('</svg>');
+        body = src.slice(open.index + open[0].length, close === -1 ? undefined : close);
+      } else {
+        warnings.push('<svg> 태그가 없어 도형 마크업으로 처리했습니다.');
+      }
+
+      /* 3. 원본 크기 파악 → 24×24 로 보정 */
+      const viewBox = readAttr(attrs, 'viewBox');
+      let minX = 0;
+      let minY = 0;
+      let w = 24;
+      let h = 24;
+
+      if (viewBox) {
+        const n = viewBox.split(/[\s,]+/).map(Number);
+        if (n.length === 4 && n.every((v) => Number.isFinite(v))) [minX, minY, w, h] = n;
+      } else {
+        const aw = parseFloat(readAttr(attrs, 'width') || '');
+        const ah = parseFloat(readAttr(attrs, 'height') || '');
+        if (Number.isFinite(aw) && Number.isFinite(ah)) {
+          w = aw;
+          h = ah;
+          warnings.push('viewBox 가 없어 width·height 값을 기준으로 맞췄습니다.');
+        } else {
+          warnings.push('크기 정보를 찾지 못해 24×24 로 가정했습니다.');
+        }
+      }
+
+      if (w <= 0 || h <= 0) throw new Error('SVG 크기(viewBox)를 읽을 수 없습니다.');
+
+      const scale = round(24 / Math.max(w, h));
+      const transform = [];
+      if (scale !== 1) transform.push(`scale(${scale})`);
+      if (minX || minY) transform.push(`translate(${round(-minX)} ${round(-minY)})`);
+      if (scale !== 1) {
+        warnings.push(`원본이 ${round(w)}×${round(h)} 라 ${scale}배로 맞췄습니다.`);
+      }
+      if (Math.abs(w - h) > 0.01) {
+        warnings.push('가로세로 비율이 정사각형이 아닙니다. 위치가 치우쳐 보일 수 있습니다.');
+      }
+
+      /* 4. 선(line) 아이콘인지 채움(fill) 아이콘인지 판별 */
+      const rootFill = (readAttr(attrs, 'fill') || '').toLowerCase();
+      const rootStroke = (readAttr(attrs, 'stroke') || '').toLowerCase();
+      const hasStroke =
+        (rootStroke && rootStroke !== 'none') || /\sstroke\s*=\s*["'](?!none)/i.test(body);
+      const hasFill =
+        (rootFill && rootFill !== 'none') ||
+        [...body.matchAll(/\sfill\s*=\s*["']([^"']*)["']/gi)].some(
+          (m) => m[1].toLowerCase() !== 'none'
+        );
+      const mode = hasStroke || !hasFill ? 'line' : 'fill';
+      if (mode === 'fill') {
+        warnings.push('채움(fill) 아이콘으로 인식해 currentColor 로 칠하도록 처리했습니다.');
+      }
+
+      /* 5. 속성 정리 · 한 줄로 압축 */
+      body = body
+        .replace(new RegExp(`\\s(?:${DROP_ATTRS})\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+)`, 'gi'), '')
+        .replace(/\s+/g, ' ')
+        .replace(/>\s+</g, '><')
+        .replace(/<(path|circle|rect|line|polyline|polygon|ellipse)([^>]*?)><\/\1>/gi, '<$1$2/>')
+        .replace(/\s+\/>/g, '/>')
+        .trim();
+
+      if (!SHAPE_TAGS.test(body)) {
+        throw new Error('그릴 수 있는 도형(path·circle·rect 등)을 찾지 못했습니다.');
+      }
+
+      /* 6. 감싸기 — 채움 모드와 크기 보정 */
+      if (mode === 'fill') body = `<g fill="currentColor" stroke="none">${body}</g>`;
+      if (transform.length) body = `<g transform="${transform.join(' ')}">${body}</g>`;
+
+      return { body, mode, size: `${round(w)}×${round(h)}`, warnings };
+    }
+
+    /** icons.js 에 그대로 붙여넣을 수 있는 코드 조각 */
+    function toIconsJsSnippet(name, { category, tags = [], body }) {
+      const tagList = tags.map((t) => `'${t.replace(/'/g, "\\'")}'`).join(', ');
+      return (
+        `  '${name}': {\n` +
+        `    category: '${category}',\n` +
+        `    tags: [${tagList}],\n` +
+        `    body: '${body.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}',\n` +
+        `  },`
+      );
+    }
+
+    /** 파일명 → 아이콘 이름 (영문 소문자 + 하이픈) */
+    function toIconName(filename) {
+      return String(filename)
+        .replace(/\.[^.]+$/, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
     }
 
     /* ───── src/lib/assetUtils.js ───── */
@@ -759,6 +964,9 @@
     /** 사용자가 넣은 이미지 아이콘(icon/ 폴더 + 드래그해 추가한 파일) 묶음 이름 */
     const CAFE = 'cafe On';
 
+    /** 삭제(숨김)한 아이콘만 모아 보는 가상 분류 */
+    const HIDDEN = '숨김';
+
     const IMAGE_EXT = /\.(gif|png|apng|webp|svg|avif|jpe?g)$/i;
     const SWATCHES = ['currentColor', '#4f46e5', '#0ea5e9', '#16a34a', '#f59e0b', '#dc2626'];
     const PREVIEW_SIZES = [12, 16, 20, 24, 32, 48, 64];
@@ -769,14 +977,18 @@
     /* ───── src/app/hooks.js ───── */
     /**
      * 앱 전용 훅
-     * - useTheme      : 라이트/다크 (localStorage 저장)
-     * - useToast      : 짧게 떴다 사라지는 알림
-     * - useCustomTags : 사용자가 덧붙인 검색 태그 (localStorage 저장)
+     * - useTheme            : 라이트/다크 (localStorage 저장)
+     * - useToast            : 짧게 떴다 사라지는 알림
+     * - useCustomTags       : 사용자가 덧붙인 검색 태그 (localStorage 저장)
+     * - useCustomCategories : 사용자가 옮긴 분류 (localStorage 저장)
      */
 
 
     const THEME_KEY = 'icon-tester-theme';
     const TAGS_KEY = 'icon-tester-tags';
+    const CATEGORY_KEY = 'icon-tester-categories';
+    const CUSTOM_ICON_KEY = 'icon-tester-custom-icons';
+    const HIDDEN_KEY = 'icon-tester-hidden';
 
     function useTheme() {
       const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'light');
@@ -825,7 +1037,7 @@
 
       const addTags = useCallback(
         (key, raw) => {
-          const builtin = ICONS[key]?.tags || [];
+          const builtin = lookupIcon(key)?.tags || [];
           const existing = customTags[key] || [];
           const fresh = [];
           for (const part of String(raw).split(/[,\n]+/)) {
@@ -855,6 +1067,152 @@
       }, []);
 
       return { customTags, addTags, removeTag };
+    }
+
+    /**
+     * 삭제(숨김)한 아이콘.
+     *
+     * icons.js 와 icon/ 폴더는 실행 중에 고칠 수 없으므로, 기본 아이콘의 '삭제'는
+     * 목록에서 감추는 방식으로 처리하고 언제든 복원할 수 있게 한다.
+     * 키 규칙은 태그·분류와 같다 — 라인 아이콘은 이름, 이미지 아이콘은 "@파일명".
+     */
+    function useHiddenIcons(showToast) {
+      const [hidden, setHidden] = useState(() => {
+        try {
+          return JSON.parse(localStorage.getItem(HIDDEN_KEY) || '{}');
+        } catch {
+          return {};
+        }
+      });
+
+      useEffect(() => {
+        localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden));
+      }, [hidden]);
+
+      const hide = useCallback(
+        (key, label) => {
+          setHidden((prev) => ({ ...prev, [key]: true }));
+          showToast(`‘${label}’ 삭제됨 · 숨김에서 되돌릴 수 있습니다`);
+        },
+        [showToast]
+      );
+
+      const restore = useCallback(
+        (key, label) => {
+          setHidden((prev) => {
+            if (!(key in prev)) return prev;
+            const copy = { ...prev };
+            delete copy[key];
+            return copy;
+          });
+          showToast(`‘${label}’ 복원됨`);
+        },
+        [showToast]
+      );
+
+      const restoreAll = useCallback(() => {
+        setHidden({});
+        showToast('삭제한 아이콘을 모두 복원했습니다');
+      }, [showToast]);
+
+      return { hidden, hide, restore, restoreAll };
+    }
+
+    /**
+     * 화면에서 추가한 SVG 아이콘.
+     * localStorage 에 저장하고, Icon 컴포넌트가 찾을 수 있도록 레지스트리에 등록한다.
+     */
+    function useCustomIcons(showToast) {
+      const [customIcons, setCustomIcons] = useState(() => {
+        try {
+          return JSON.parse(localStorage.getItem(CUSTOM_ICON_KEY) || '{}');
+        } catch {
+          return {};
+        }
+      });
+
+      // 렌더 도중 등록해야 이번 렌더에서 바로 그릴 수 있다
+      useMemo(() => registerCustomIcons(customIcons), [customIcons]);
+
+      useEffect(() => {
+        localStorage.setItem(CUSTOM_ICON_KEY, JSON.stringify(customIcons));
+      }, [customIcons]);
+
+      const addIcon = useCallback(
+        (name, def) => {
+          setCustomIcons((prev) => ({ ...prev, [name]: def }));
+          showToast(`‘${name}’ 아이콘을 추가했습니다`);
+        },
+        [showToast]
+      );
+
+      const removeIcon = useCallback(
+        (name) => {
+          setCustomIcons((prev) => {
+            if (!(name in prev)) return prev;
+            const copy = { ...prev };
+            delete copy[name];
+            return copy;
+          });
+          showToast(`‘${name}’ 아이콘을 삭제했습니다`);
+        },
+        [showToast]
+      );
+
+      return { customIcons, addIcon, removeIcon };
+    }
+
+    /**
+     * 아이콘을 다른 분류로 옮긴 기록.
+     * 키 규칙은 사용자 태그와 같고, 값은 옮겨간 분류 이름이다.
+     * 기본 분류로 되돌아가면 항목을 지워 저장소를 깨끗하게 유지한다.
+     */
+    function useCustomCategories(showToast) {
+      const [customCategories, setCustomCategories] = useState(() => {
+        try {
+          return JSON.parse(localStorage.getItem(CATEGORY_KEY) || '{}');
+        } catch {
+          return {};
+        }
+      });
+
+      useEffect(() => {
+        localStorage.setItem(CATEGORY_KEY, JSON.stringify(customCategories));
+      }, [customCategories]);
+
+      const moveCategory = useCallback(
+        (key, next, builtin) => {
+          const name = String(next).trim();
+          if (!name) return;
+          if (name === builtin) {
+            setCustomCategories((prev) => {
+              if (!(key in prev)) return prev;
+              const copy = { ...prev };
+              delete copy[key];
+              return copy;
+            });
+          } else {
+            setCustomCategories((prev) => ({ ...prev, [key]: name }));
+          }
+          showToast(`‘${name}’ 분류로 옮겼습니다`);
+        },
+        [showToast]
+      );
+
+      const resetCategory = useCallback(
+        (key, builtin) => {
+          setCustomCategories((prev) => {
+            if (!(key in prev)) return prev;
+            const copy = { ...prev };
+            delete copy[key];
+            return copy;
+          });
+          showToast(`‘${builtin}’ 분류로 되돌렸습니다`);
+        },
+        [showToast]
+      );
+
+      return { customCategories, moveCategory, resetCategory };
     }
 
     /* ───── src/components/Icon.jsx ───── */
@@ -896,7 +1254,7 @@
       },
       ref,
     ) {
-      const icon = ICONS[name];
+      const icon = lookupIcon(name);
 
       const transform = useMemo(() => {
         const t = [];
@@ -941,7 +1299,14 @@
           role={title ? "img" : undefined}
           aria-hidden={title ? undefined : true}
           focusable="false"
-          style={{ display: "block", flex: "none", transform, ...style }}
+          // 채움(fill) 아이콘은 내부에서 currentColor 를 쓰므로 글자색도 함께 맞춰 준다
+          style={{
+            display: "block",
+            flex: "none",
+            transform,
+            ...(color !== "currentColor" ? { color } : null),
+            ...style,
+          }}
           dangerouslySetInnerHTML={{
             __html: (title ? `<title>${escapeXml(title)}</title>` : "") + icon.body,
           }}
@@ -962,11 +1327,12 @@
       name,
       { size = 24, strokeWidth = 1.75, color = "currentColor" } = {},
     ) {
-      const icon = ICONS[name];
+      const icon = lookupIcon(name);
       if (!icon) return "";
       return (
         `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" ` +
         `fill="none" stroke="${color}" stroke-width="${strokeWidth}" ` +
+        (color === "currentColor" ? "" : `color="${color}" `) +
         `stroke-linecap="round" stroke-linejoin="round">` +
         icon.body.replace(/\/><path/g, "/>\n  <path").replace(/^</, "\n  <") +
         `\n</svg>`
@@ -983,6 +1349,52 @@
             <Icon name="copy" size={14} />
           </button>
         </div>
+      );
+    }
+
+    /* ───── src/components/DeleteButton.jsx ───── */
+    /**
+     * 상세 패널의 삭제 · 복원 버튼
+     *
+     * - permanent=false : 기본 아이콘 — 목록에서 감추고 언제든 복원할 수 있다
+     * - permanent=true  : 화면에서 추가한 아이콘 · 드래그해 넣은 파일 — 되돌릴 수 없으므로 한 번 확인한다
+     */
+    function DeleteButton({ hidden, permanent, onDelete, onRestore }) {
+      const [confirming, setConfirming] = useState(false);
+
+      if (hidden) {
+        return (
+          <button className="demo-btn sm" onClick={onRestore}>
+            <Icon name="refresh" size={14} />
+            복원
+          </button>
+        );
+      }
+
+      if (confirming) {
+        return (
+          <span className="confirm-row">
+            되돌릴 수 없습니다. 삭제할까요?
+            <button className="demo-btn sm danger" onClick={onDelete}>
+              <Icon name="trash" size={13} />
+              삭제
+            </button>
+            <button className="demo-btn sm ghost" onClick={() => setConfirming(false)}>
+              취소
+            </button>
+          </span>
+        );
+      }
+
+      return (
+        <button
+          className="demo-btn sm ghost danger"
+          onClick={() => (permanent ? setConfirming(true) : onDelete())}
+          title={permanent ? '완전히 삭제합니다' : '목록에서 삭제합니다 (숨김에서 복원 가능)'}
+        >
+          <Icon name="trash" size={14} />
+          삭제
+        </button>
       );
     }
 
@@ -1026,6 +1438,395 @@
             aria-label="배경색 직접 선택"
           />
         </div>
+      );
+    }
+
+    /* ───── src/components/CategoryPicker.jsx ───── */
+    const NEW_CATEGORY = '__new__';
+
+    /**
+     * 분류 이동 선택기 (상세 패널 안)
+     * 기존 분류 중에서 고르거나, 새 분류를 만들어 옮긴다.
+     * 기본 분류(icons.js)와 달라지면 '되돌리기' 버튼이 나타난다.
+     */
+    function CategoryPicker({
+      value,
+      builtin,
+      categories,
+      onChange,
+      onReset,
+      onCopy,
+    }) {
+      const [creating, setCreating] = useState(false);
+      const [draft, setDraft] = useState('');
+
+      // 목록에 없는 분류(직접 만든 것)로 옮겨둔 상태라면 그 값도 보여준다
+      const options = categories.includes(value) ? categories : [...categories, value];
+      const moved = value !== builtin;
+
+      const submit = (e) => {
+        e.preventDefault();
+        const name = draft.trim();
+        if (!name) return;
+        onChange(name);
+        setDraft('');
+        setCreating(false);
+      };
+
+      return (
+        <div className="category-picker">
+          <div className="category-row">
+            <select
+              className="category-select"
+              value={creating ? NEW_CATEGORY : value}
+              onChange={(e) => {
+                if (e.target.value === NEW_CATEGORY) {
+                  setCreating(true);
+                  return;
+                }
+                setCreating(false);
+                onChange(e.target.value);
+              }}
+              aria-label="분류 이동"
+            >
+              {options.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+              <option value={NEW_CATEGORY}>+ 새 분류 만들기…</option>
+            </select>
+
+            {moved && (
+              <button
+                type="button"
+                className="demo-btn sm ghost"
+                onClick={onReset}
+                title={`기본 분류 ‘${builtin}’ 로 되돌리기`}
+              >
+                <Icon name="refresh" size={13} />
+                되돌리기
+              </button>
+            )}
+          </div>
+
+          {creating && (
+            <form className="tag-form" onSubmit={submit}>
+              <input
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="새 분류 이름 입력 후 Enter"
+                aria-label="새 분류 이름"
+              />
+              <button type="submit" className="demo-btn sm" disabled={!draft.trim()}>
+                <Icon name="plus" size={13} />
+                만들기
+              </button>
+              <button
+                type="button"
+                className="demo-btn sm ghost"
+                onClick={() => {
+                  setCreating(false);
+                  setDraft('');
+                }}
+              >
+                취소
+              </button>
+            </form>
+          )}
+
+          <div className="tag-foot">
+            <span>
+              {moved
+                ? `기본 분류는 ‘${builtin}’ 입니다. 옮긴 기록은 이 브라우저에 저장됩니다.`
+                : '옮기면 분류 필터에 바로 반영되고 이 브라우저에 저장됩니다.'}
+            </span>
+            <button type="button" className="link-btn" onClick={onCopy}>
+              <Icon name="copy" size={12} />
+              icons.js 용 category 복사
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    /* ───── src/components/AddIconDialog.jsx ───── */
+    const IMPORT_PREVIEW_SIZES = [16, 24, 32, 48];
+    const NAME_RULE = /^[a-z0-9][a-z0-9-]*$/;
+
+    /**
+     * SVG 아이콘 추가 대화상자
+     * 붙여넣은 코드나 .svg 파일을 라인 아이콘으로 변환해 목록에 넣는다.
+     */
+    function AddIconDialog({
+      categories,
+      strokeWidth,
+      color,
+      existingNames,
+      onAdd,
+      onClose,
+      onCopy,
+    }) {
+      const [source, setSource] = useState('');
+      const [name, setName] = useState('');
+      const [category, setCategory] = useState(categories[0] || '기타');
+      const [tagText, setTagText] = useState('');
+      const fileRef = useRef(null);
+
+      /* 미리보기 전용 두께·색 — 툴바 값에서 시작하되 여기서 따로 바꿔볼 수 있다 */
+      const [previewStroke, setPreviewStroke] = useState(strokeWidth);
+      const [previewColor, setPreviewColor] = useState(color);
+
+      /* 붙여넣은 코드가 바뀔 때마다 변환을 다시 시도한다 */
+      const parsed = useMemo(() => {
+        if (!source.trim()) return null;
+        try {
+          return { ok: true, ...parseSvgSource(source) };
+        } catch (e) {
+          return { ok: false, message: e.message };
+        }
+      }, [source]);
+
+      const tags = tagText
+        .split(/[,\n]+/)
+        .map((t) => t.trim())
+        .filter(Boolean);
+
+      const duplicate = !!name && existingNames.includes(name);
+      const badName = !!name && !NAME_RULE.test(name);
+      const ready = parsed?.ok && name && !duplicate && !badName;
+
+      const readFile = async (file) => {
+        if (!file) return;
+        setSource(await file.text());
+        if (!name) setName(toIconName(file.name));
+      };
+
+      const snippet = ready
+        ? toIconsJsSnippet(name, { category, tags, body: parsed.body })
+        : '';
+
+      const submit = (e) => {
+        e.preventDefault();
+        if (!ready) return;
+        onAdd(name, { category, tags, body: parsed.body, custom: true });
+        onClose();
+      };
+
+      return (
+        <>
+          <div className="scrim" onClick={onClose} />
+          <div
+            className="dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="SVG 아이콘 추가"
+            onDragEnter={(e) => e.stopPropagation()}
+            onDragOver={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+            onDrop={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              readFile(e.dataTransfer.files?.[0]);
+            }}
+          >
+            <div className="panel-head">
+              <Icon name="plus" size={18} />
+              <span className="title">SVG 아이콘 추가</span>
+              <span className="spacer" />
+              <button className="icon-btn" onClick={onClose} aria-label="닫기">
+                <Icon name="x" size={17} />
+              </button>
+            </div>
+
+            <form className="dialog-body" onSubmit={submit}>
+              <div className="section-label">SVG 코드</div>
+              <textarea
+                className="svg-input"
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                placeholder={'<svg viewBox="0 0 24 24" ...> 전체를 붙여넣거나\n<path d="..."/> 만 넣어도 됩니다'}
+                aria-label="SVG 코드"
+                spellCheck="false"
+              />
+              <div className="dialog-row">
+                <button type="button" className="demo-btn sm" onClick={() => fileRef.current?.click()}>
+                  <Icon name="upload" size={13} />
+                  .svg 파일 선택
+                </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".svg,image/svg+xml"
+                  hidden
+                  onChange={(e) => {
+                    readFile(e.target.files?.[0]);
+                    e.target.value = '';
+                  }}
+                />
+                {source && (
+                  <button type="button" className="demo-btn sm ghost" onClick={() => setSource('')}>
+                    지우기
+                  </button>
+                )}
+                <span className="hint dialog-hint">파일을 이 창에 끌어다 놓아도 됩니다</span>
+              </div>
+
+              {parsed && !parsed.ok && (
+                <p className="hint import-error">
+                  <Icon name="alert-triangle" size={13} /> {parsed.message}
+                </p>
+              )}
+
+              {parsed?.ok && (
+                <>
+                  <div className="section-label">미리보기</div>
+                  <div className="import-preview">
+                    {IMPORT_PREVIEW_SIZES.map((s) => (
+                      <figure key={s}>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          width={s}
+                          height={s}
+                          fill="none"
+                          stroke={previewColor}
+                          strokeWidth={previewStroke}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          style={previewColor === 'currentColor' ? undefined : { color: previewColor }}
+                          dangerouslySetInnerHTML={{ __html: parsed.body }}
+                        />
+                        <figcaption>{s}</figcaption>
+                      </figure>
+                    ))}
+                    <div className="import-meta">
+                      원본 {parsed.size} · {parsed.mode === 'line' ? '선(line)' : '채움(fill)'} 아이콘
+                    </div>
+                  </div>
+
+                  {/* 추가하기 전에 두께·색을 바꿔가며 확인 */}
+                  <div className="preview-controls">
+                    <div className="control">
+                      <label htmlFor="preview-stroke">두께</label>
+                      <input
+                        id="preview-stroke"
+                        type="range"
+                        min="0.5"
+                        max="3"
+                        step="0.25"
+                        value={previewStroke}
+                        onChange={(e) => setPreviewStroke(Number(e.target.value))}
+                        disabled={parsed.mode === 'fill'}
+                      />
+                      <span className="val">{parsed.mode === 'fill' ? '—' : previewStroke}</span>
+                    </div>
+
+                    <div className="swatches">
+                      {SWATCHES.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          className="swatch"
+                          aria-pressed={previewColor === c}
+                          onClick={() => setPreviewColor(c)}
+                          title={c === 'currentColor' ? 'currentColor (글자색 상속)' : c}
+                          style={c === 'currentColor' ? { background: 'var(--text)' } : { background: c }}
+                        />
+                      ))}
+                      <input
+                        type="color"
+                        value={previewColor === 'currentColor' ? '#4f46e5' : previewColor}
+                        onChange={(e) => setPreviewColor(e.target.value)}
+                        title="직접 선택"
+                        aria-label="미리보기 색상"
+                      />
+                    </div>
+                  </div>
+
+                  {parsed.mode === 'fill' && (
+                    <p className="hint import-warn">
+                      <Icon name="info" size={13} /> 채움 아이콘은 선이 없어 <b>두께 조절이 적용되지
+                      않습니다</b>. 색상만 바뀝니다.
+                    </p>
+                  )}
+
+                  {parsed.warnings.map((w) => (
+                    <p className="hint import-warn" key={w}>
+                      <Icon name="info" size={13} /> {w}
+                    </p>
+                  ))}
+                </>
+              )}
+
+              <div className="section-label">이름 · 분류 · 태그</div>
+              <div className="dialog-row">
+                <input
+                  className="dialog-input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value.trim().toLowerCase())}
+                  placeholder="아이콘 이름 (예: heart)"
+                  aria-label="아이콘 이름"
+                />
+                <select
+                  className="category-select"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  aria-label="분류"
+                >
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {duplicate && (
+                <p className="hint import-error">
+                  <Icon name="alert-triangle" size={13} /> 이미 있는 이름입니다. 다른 이름을 쓰세요.
+                </p>
+              )}
+              {badName && (
+                <p className="hint import-error">
+                  <Icon name="alert-triangle" size={13} /> 영문 소문자·숫자·하이픈(-)만 쓸 수 있습니다.
+                </p>
+              )}
+
+              <input
+                className="dialog-input"
+                value={tagText}
+                onChange={(e) => setTagText(e.target.value)}
+                placeholder="검색용 태그 — 쉼표로 구분 (예: 하트, 좋아요, like)"
+                aria-label="태그"
+              />
+
+              {ready && (
+                <>
+                  <div className="section-label">icons.js 에 넣을 코드</div>
+                  <CodeBlock code={snippet} onCopy={() => onCopy(snippet, 'icons.js 코드')} />
+                  <p className="hint">
+                    추가한 아이콘은 이 브라우저에 저장됩니다. 영구히 남기려면 위 코드를{' '}
+                    <code>src/data/icons.js</code> 에 붙여넣으세요.
+                  </p>
+                </>
+              )}
+
+              <div className="dialog-foot">
+                <button type="button" className="demo-btn" onClick={onClose}>
+                  취소
+                </button>
+                <button type="submit" className="demo-btn primary" disabled={!ready}>
+                  <Icon name="plus" size={14} />
+                  아이콘 추가
+                </button>
+              </div>
+            </form>
+          </div>
+        </>
       );
     }
 
@@ -1301,8 +2102,11 @@
       onReset,
       category,
       onCategory,
+      categories,
       counts,
       onAddFiles,
+      onAddSvg,
+      hiddenCount,
     }) {
       const fileRef = useRef(null);
 
@@ -1434,9 +2238,31 @@
                 }}
               />
 
+              <button
+                className="chip add"
+                onClick={onAddSvg}
+                title="SVG 코드를 붙여넣어 라인 아이콘으로 추가 — 색·두께 조절이 적용됩니다"
+              >
+                <Icon name="plus" size={13} />
+                SVG 아이콘 추가
+              </button>
+
+              {hiddenCount > 0 && (
+                <button
+                  className="chip hidden-chip"
+                  aria-pressed={category === HIDDEN}
+                  onClick={() => onCategory(HIDDEN)}
+                  title="삭제한 아이콘 — 여기서 복원할 수 있습니다"
+                >
+                  <Icon name="trash" size={13} />
+                  {HIDDEN}
+                  <span className="count">{hiddenCount}</span>
+                </button>
+              )}
+
               <span className="chip-divider" aria-hidden="true" />
 
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <button
                   key={c}
                   className="chip"
@@ -1464,10 +2290,14 @@
       size,
       iconProps,
       pixelGrid,
+      dimmed,
       selected,
       onSelect,
     }) {
       if (names.length + assets.length === 0) return null;
+
+      /** 삭제한 아이콘 목록(숨김)을 볼 때는 흐리게 보여 준다 */
+      const extra = `${pixelGrid ? ' pixelgrid' : ''}${dimmed ? ' dimmed' : ''}`;
 
       return (
         <div
@@ -1479,7 +2309,7 @@
           {assets.map((item) => (
             <button
               key={item.url}
-              className={`cell asset${pixelGrid ? ' pixelgrid' : ''}`}
+              className={`cell asset${extra}`}
               aria-selected={selected?.type === 'asset' && selected.item === item}
               onClick={() => onSelect({ type: 'asset', item })}
               title={`${item.file} — 클릭하면 상세 보기`}
@@ -1500,7 +2330,7 @@
           {names.map((name) => (
             <button
               key={name}
-              className={`cell${pixelGrid ? ' pixelgrid' : ''}`}
+              className={`cell${extra}`}
               aria-selected={selected?.type === 'icon' && selected.name === name}
               onClick={() => onSelect({ type: 'icon', name })}
               title={`${name} — 클릭하면 상세 보기`}
@@ -1517,6 +2347,14 @@
 
     /** 검색 결과가 없을 때 */
     function EmptyState({ category, query }) {
+      if (category === HIDDEN) {
+        return (
+          <div className="empty">
+            <div className="big">삭제한 아이콘이 없습니다</div>
+            <div>상세 패널의 삭제 버튼으로 목록에서 감춘 아이콘이 여기 모입니다.</div>
+          </div>
+        );
+      }
       if (category === CAFE && !query) {
         return (
           <div className="empty">
@@ -1543,18 +2381,26 @@
       size,
       strokeWidth,
       color,
+      category,
+      categories,
+      onMoveCategory,
+      onResetCategory,
       customTags,
       onAddTags,
       onRemoveTag,
       onClose,
       onCopy,
+      hidden,
+      permanent,
+      onDelete,
+      onRestore,
     }) {
       const [rotate, setRotate] = useState(0);
       const [flip, setFlip] = useState(null);
       const [spin, setSpin] = useState(false);
       const [bg, setBg] = useState('checker');
       const [customBg, setCustomBg] = useState('#4f46e5');
-      const icon = ICONS[name];
+      const icon = lookupIcon(name);
 
       useEffect(() => {
         setRotate(0);
@@ -1627,16 +2473,37 @@
                 <button className="demo-btn sm" onClick={() => setSpin(!spin)} aria-pressed={spin}>
                   <Icon name="loader" size={14} spin={spin} /> 회전 애니메이션
                 </button>
+                <DeleteButton
+                  hidden={hidden}
+                  permanent={permanent}
+                  onDelete={onDelete}
+                  onRestore={onRestore}
+                />
               </div>
 
+              {permanent && (
+                <p className="hint bg-note">
+                  화면에서 추가한 아이콘입니다. 이 브라우저에만 저장되어 있어 삭제하면 되돌릴 수
+                  없습니다.
+                </p>
+              )}
+
               <dl className="meta">
-                <dt>분류</dt>
-                <dd>{icon.category}</dd>
                 <dt>크기</dt>
                 <dd>
                   {size}px · 두께 {strokeWidth} · {color}
                 </dd>
               </dl>
+
+              <div className="section-label">분류</div>
+              <CategoryPicker
+                value={category}
+                builtin={icon.category}
+                categories={categories}
+                onChange={onMoveCategory}
+                onReset={onResetCategory}
+                onCopy={() => onCopy(`category: '${category}',`, 'category 값')}
+              />
 
               <div className="section-label">태그</div>
               <TagEditor
@@ -1682,13 +2549,19 @@
       item,
       size,
       strokeWidth,
+      category,
+      categories,
+      onMoveCategory,
+      onResetCategory,
       customTags,
       onAddTags,
       onRemoveTag,
       onClose,
       onCopy,
       onToast,
-      onRemove,
+      hidden,
+      onDelete,
+      onRestore,
     }) {
       const [{ status, url, meta, bytes }, restart] = useAsset(item.url, item.blob);
       const [bg, setBg] = useState('checker');
@@ -1736,16 +2609,15 @@
                 <button className="demo-btn sm" onClick={restart}>
                   <Icon name="play" size={13} strokeWidth={strokeWidth} /> 처음부터
                 </button>
-                {onRemove && (
-                  <button className="demo-btn sm ghost" onClick={onRemove}>
-                    <Icon name="trash" size={13} strokeWidth={strokeWidth} /> 목록에서 제거
-                  </button>
-                )}
+                <DeleteButton
+                  hidden={hidden}
+                  permanent={item.dropped}
+                  onDelete={onDelete}
+                  onRestore={onRestore}
+                />
               </div>
 
               <dl className="meta">
-                <dt>분류</dt>
-                <dd>{CAFE}</dd>
                 <dt>원본</dt>
                 <dd>{natural ? `${natural.w} × ${natural.h}px` : '…'}</dd>
                 <dt>용량</dt>
@@ -1763,6 +2635,16 @@
                   <code>{item.dropped ? '(드래그해 추가한 파일)' : path}</code>
                 </dd>
               </dl>
+
+              <div className="section-label">분류</div>
+              <CategoryPicker
+                value={category}
+                builtin={CAFE}
+                categories={categories}
+                onChange={onMoveCategory}
+                onReset={onResetCategory}
+                onCopy={() => onCopy(`category: '${category}',`, 'category 값')}
+              />
 
               <div className="section-label">태그</div>
               <TagEditor
@@ -1815,6 +2697,9 @@
       const [theme, toggleTheme] = useTheme();
       const [toast, showToast] = useToast();
       const { customTags, addTags, removeTag } = useCustomTags(showToast);
+      const { customCategories, moveCategory, resetCategory } = useCustomCategories(showToast);
+      const { customIcons, addIcon, removeIcon } = useCustomIcons(showToast);
+      const { hidden, hide, restore, restoreAll } = useHiddenIcons(showToast);
 
       const [query, setQuery] = useState('');
       const [category, setCategory] = useState('전체');
@@ -1826,6 +2711,7 @@
       const [selected, setSelected] = useState(null); // { type: 'icon' | 'asset', ... }
       const [extraAssets, setExtraAssets] = useState([]);
       const [dragging, setDragging] = useState(false);
+      const [adding, setAdding] = useState(false);
 
       const searchRef = useRef(null);
       const dragDepth = useRef(0);
@@ -1844,13 +2730,14 @@
           }
           if (e.key === 'Escape') {
             if (typing && el !== searchRef.current) el.blur();
+            else if (adding) setAdding(false);
             else if (selected) setSelected(null);
             else if (el === searchRef.current) el.blur();
           }
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-      }, [selected]);
+      }, [selected, adding]);
 
       const copy = useCallback(
         (text, label) => {
@@ -1920,48 +2807,110 @@
         },
       };
 
-      /* 검색 + 분류 필터 */
+      /**
+       * 기본 아이콘 + 화면에서 추가한 아이콘.
+       * 추가 대화상자가 중복 이름을 막지만, 저장된 값이 기본 아이콘과 겹칠 수도 있으므로
+       * 한 번 더 걸러 같은 이름이 두 칸 나오지 않게 한다 (기본 아이콘이 우선).
+       */
+      const allNames = useMemo(
+        () => [...new Set([...ALL_NAMES, ...Object.keys(customIcons)])].sort(),
+        [customIcons]
+      );
+
+      /**
+       * 검색 + 분류 필터
+       * 분류는 사용자가 옮긴 값을 우선 적용하고, 삭제한 아이콘은 '숨김' 에서만 보인다.
+       */
       const results = useMemo(() => {
-        if (category === CAFE) return [];
         const q = query.trim().toLowerCase();
-        return ALL_NAMES.filter((name) => {
-          const icon = ICONS[name];
-          if (category !== '전체' && icon.category !== category) return false;
+        return allNames.filter((name) => {
+          const icon = lookupIcon(name);
+          const cat = iconCategory(name, customCategories);
+          if (category === HIDDEN) {
+            if (!hidden[name]) return false;
+          } else if (hidden[name]) return false;
+          else if (category !== '전체' && cat !== category) return false;
           if (!q) return true;
           return (
             name.includes(q) ||
-            icon.category.toLowerCase().includes(q) ||
+            cat.toLowerCase().includes(q) ||
             icon.tags.some((t) => t.toLowerCase().includes(q)) ||
             (customTags[name] || []).some((t) => t.toLowerCase().includes(q))
           );
         });
-      }, [query, category, customTags]);
+      }, [query, category, allNames, customTags, customCategories, hidden]);
 
       const assetResults = useMemo(() => {
-        if (category !== '전체' && category !== CAFE) return [];
         const q = query.trim().toLowerCase();
-        if (!q) return assets;
-        return assets.filter(
-          (a) =>
+        return assets.filter((a) => {
+          const key = assetKey(a);
+          const cat = assetCategory(a, customCategories, CAFE);
+          if (category === HIDDEN) {
+            if (!hidden[key]) return false;
+          } else if (hidden[key]) return false;
+          else if (category !== '전체' && cat !== category) return false;
+          if (!q) return true;
+          return (
             a.name.toLowerCase().includes(q) ||
             a.file.toLowerCase().includes(q) ||
-            (customTags['@' + a.file] || []).some((t) => t.toLowerCase().includes(q))
-        );
-      }, [query, category, assets, customTags]);
+            cat.toLowerCase().includes(q) ||
+            (customTags[key] || []).some((t) => t.toLowerCase().includes(q))
+          );
+        });
+      }, [query, category, assets, customTags, customCategories, hidden]);
 
       const total = results.length + assetResults.length;
 
+      /* 개수 집계 — 삭제한 아이콘은 빼고 센다 */
       const counts = useMemo(() => {
-        const map = { 전체: ALL_NAMES.length + assets.length, [CAFE]: assets.length };
-        for (const n of ALL_NAMES) map[ICONS[n].category] = (map[ICONS[n].category] || 0) + 1;
+        const visibleNames = allNames.filter((n) => !hidden[n]);
+        const visibleAssets = assets.filter((a) => !hidden[assetKey(a)]);
+        const map = { 전체: visibleNames.length + visibleAssets.length, [CAFE]: 0 };
+        const bump = (c) => {
+          map[c] = (map[c] || 0) + 1;
+        };
+        for (const n of visibleNames) bump(iconCategory(n, customCategories));
+        for (const a of visibleAssets) bump(assetCategory(a, customCategories, CAFE));
         return map;
-      }, [assets.length]);
+      }, [allNames, assets, customCategories, hidden]);
+
+      /** 삭제한 아이콘 수 — 지금 목록에 실제로 존재하는 것만 센다 */
+      const hiddenCount = useMemo(
+        () =>
+          allNames.filter((n) => hidden[n]).length +
+          assets.filter((a) => hidden[assetKey(a)]).length,
+        [allNames, assets, hidden]
+      );
+
+      /**
+       * 기본 분류 + 사용자가 새로 만든 분류.
+       * 소속된 아이콘이 하나도 없는 분류는 빼서 빈 칩이 남지 않게 한다
+       * (마지막 아이콘을 다른 곳으로 옮기면 그 분류는 자동으로 사라진다)
+       */
+      const categoryList = useMemo(() => {
+        const extra = Object.keys(counts).filter(
+          (c) => c !== '전체' && c !== CAFE && !CATEGORIES.includes(c) && counts[c] > 0
+        );
+        return [...CATEGORIES, ...extra];
+      }, [counts]);
+
+      /* 상세 패널의 분류 선택 목록 — cafe On 도 이동 대상에 포함 */
+      const pickerCategories = useMemo(() => [...categoryList, CAFE], [categoryList]);
+
+      /* 삭제한 아이콘을 모두 복원하면 '숨김' 화면에 머물 이유가 없다 */
+      useEffect(() => {
+        if (category === HIDDEN && hiddenCount === 0) setCategory('전체');
+      }, [category, hiddenCount]);
 
       return (
         <div className={`app${dragging ? ' dropping' : ''}`} {...dropHandlers}>
           {dragging && <DropOverlay />}
 
-          <Masthead count={ALL_NAMES.length} theme={theme} onToggleTheme={toggleTheme} />
+          <Masthead
+            count={allNames.filter((n) => !hidden[n]).length}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+          />
 
           <Toolbar
             searchRef={searchRef}
@@ -1980,16 +2929,31 @@
             onReset={resetControls}
             category={category}
             onCategory={setCategory}
+            categories={categoryList}
             counts={counts}
             onAddFiles={addFiles}
+            onAddSvg={() => setAdding(true)}
+            hiddenCount={hiddenCount}
           />
 
           <div className="result-line">
             <b>{total}</b>
             <span>개 표시 중</span>
-            {assetResults.length > 0 && <span>· cafe On {assetResults.length}개 포함</span>}
+            {assetResults.length > 0 && <span>· 이미지 아이콘 {assetResults.length}개 포함</span>}
             {query && <span>· 검색어 “{query}”</span>}
-            <span style={{ marginLeft: 'auto' }}>아이콘을 클릭하면 코드를 복사할 수 있습니다</span>
+            {category === HIDDEN ? (
+              <>
+                <button className="link-btn" onClick={restoreAll}>
+                  <Icon name="refresh" size={12} />
+                  모두 복원
+                </button>
+                <span style={{ marginLeft: 'auto' }}>
+                  아이콘을 클릭하면 하나씩 복원할 수 있습니다
+                </span>
+              </>
+            ) : (
+              <span style={{ marginLeft: 'auto' }}>아이콘을 클릭하면 코드를 복사할 수 있습니다</span>
+            )}
           </div>
 
           {total === 0 ? (
@@ -2001,6 +2965,7 @@
               size={size}
               iconProps={{ size, strokeWidth, color }}
               pixelGrid={pixelGrid}
+              dimmed={category === HIDDEN}
               selected={selected}
               onSelect={setSelected}
             />
@@ -2012,11 +2977,26 @@
               size={size}
               strokeWidth={strokeWidth}
               color={color}
+              category={iconCategory(selected.name, customCategories)}
+              categories={pickerCategories}
+              onMoveCategory={(c) => moveCategory(selected.name, c, lookupIcon(selected.name).category)}
+              onResetCategory={() => resetCategory(selected.name, lookupIcon(selected.name).category)}
               customTags={customTags[selected.name] || []}
               onAddTags={(raw) => addTags(selected.name, raw)}
               onRemoveTag={(tag) => removeTag(selected.name, tag)}
               onClose={() => setSelected(null)}
               onCopy={copy}
+              hidden={!!hidden[selected.name]}
+              permanent={!!customIcons[selected.name]}
+              onDelete={() => {
+                if (customIcons[selected.name]) removeIcon(selected.name);
+                else hide(selected.name, selected.name);
+                setSelected(null);
+              }}
+              onRestore={() => {
+                restore(selected.name, selected.name);
+                setSelected(null);
+              }}
             />
           )}
           {selected?.type === 'asset' && (
@@ -2024,13 +3004,38 @@
               item={selected.item}
               size={size}
               strokeWidth={strokeWidth}
-              customTags={customTags['@' + selected.item.file] || []}
-              onAddTags={(raw) => addTags('@' + selected.item.file, raw)}
-              onRemoveTag={(tag) => removeTag('@' + selected.item.file, tag)}
+              category={assetCategory(selected.item, customCategories, CAFE)}
+              categories={pickerCategories}
+              onMoveCategory={(c) => moveCategory(assetKey(selected.item), c, CAFE)}
+              onResetCategory={() => resetCategory(assetKey(selected.item), CAFE)}
+              customTags={customTags[assetKey(selected.item)] || []}
+              onAddTags={(raw) => addTags(assetKey(selected.item), raw)}
+              onRemoveTag={(tag) => removeTag(assetKey(selected.item), tag)}
               onClose={() => setSelected(null)}
               onCopy={copy}
               onToast={showToast}
-              onRemove={selected.item.dropped ? () => removeAsset(selected.item) : undefined}
+              hidden={!!hidden[assetKey(selected.item)]}
+              onDelete={() => {
+                if (selected.item.dropped) removeAsset(selected.item);
+                else hide(assetKey(selected.item), selected.item.file);
+                setSelected(null);
+              }}
+              onRestore={() => {
+                restore(assetKey(selected.item), selected.item.file);
+                setSelected(null);
+              }}
+            />
+          )}
+
+          {adding && (
+            <AddIconDialog
+              categories={categoryList}
+              strokeWidth={strokeWidth}
+              color={color}
+              existingNames={allNames}
+              onAdd={addIcon}
+              onClose={() => setAdding(false)}
+              onCopy={copy}
             />
           )}
 

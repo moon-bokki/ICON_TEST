@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import Icon from './Icon';
-import { CAFE, CATEGORIES, SWATCHES } from '../app/constants';
+import { CAFE, HIDDEN, SWATCHES } from '../app/constants';
 
 /**
  * 검색 · 크기/두께/색상 조절 · 분류 필터
@@ -23,8 +23,11 @@ export default function Toolbar({
   onReset,
   category,
   onCategory,
+  categories,
   counts,
   onAddFiles,
+  onAddSvg,
+  hiddenCount,
 }) {
   const fileRef = useRef(null);
 
@@ -156,9 +159,31 @@ export default function Toolbar({
             }}
           />
 
+          <button
+            className="chip add"
+            onClick={onAddSvg}
+            title="SVG 코드를 붙여넣어 라인 아이콘으로 추가 — 색·두께 조절이 적용됩니다"
+          >
+            <Icon name="plus" size={13} />
+            SVG 아이콘 추가
+          </button>
+
+          {hiddenCount > 0 && (
+            <button
+              className="chip hidden-chip"
+              aria-pressed={category === HIDDEN}
+              onClick={() => onCategory(HIDDEN)}
+              title="삭제한 아이콘 — 여기서 복원할 수 있습니다"
+            >
+              <Icon name="trash" size={13} />
+              {HIDDEN}
+              <span className="count">{hiddenCount}</span>
+            </button>
+          )}
+
           <span className="chip-divider" aria-hidden="true" />
 
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <button
               key={c}
               className="chip"

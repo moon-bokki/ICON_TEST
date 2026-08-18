@@ -1,5 +1,5 @@
 import { forwardRef, useMemo } from "react";
-import { ICONS } from "../data/icons";
+import { lookupIcon } from "../data/customIcons";
 
 /**
  * 아이콘 컴포넌트
@@ -39,7 +39,7 @@ const Icon = forwardRef(function Icon(
   },
   ref,
 ) {
-  const icon = ICONS[name];
+  const icon = lookupIcon(name);
 
   const transform = useMemo(() => {
     const t = [];
@@ -84,7 +84,14 @@ const Icon = forwardRef(function Icon(
       role={title ? "img" : undefined}
       aria-hidden={title ? undefined : true}
       focusable="false"
-      style={{ display: "block", flex: "none", transform, ...style }}
+      // 채움(fill) 아이콘은 내부에서 currentColor 를 쓰므로 글자색도 함께 맞춰 준다
+      style={{
+        display: "block",
+        flex: "none",
+        transform,
+        ...(color !== "currentColor" ? { color } : null),
+        ...style,
+      }}
       dangerouslySetInnerHTML={{
         __html: (title ? `<title>${escapeXml(title)}</title>` : "") + icon.body,
       }}
@@ -105,11 +112,12 @@ export function toSvgString(
   name,
   { size = 24, strokeWidth = 1.75, color = "currentColor" } = {},
 ) {
-  const icon = ICONS[name];
+  const icon = lookupIcon(name);
   if (!icon) return "";
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" ` +
     `fill="none" stroke="${color}" stroke-width="${strokeWidth}" ` +
+    (color === "currentColor" ? "" : `color="${color}" `) +
     `stroke-linecap="round" stroke-linejoin="round">` +
     icon.body.replace(/\/><path/g, "/>\n  <path").replace(/^</, "\n  <") +
     `\n</svg>`

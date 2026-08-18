@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import Icon, { toSvgString } from './Icon';
 import BgPicker from './BgPicker';
+import CategoryPicker from './CategoryPicker';
 import CodeBlock from './CodeBlock';
+import DeleteButton from './DeleteButton';
 import TagEditor from './TagEditor';
-import { ICONS } from '../data/icons';
+import { lookupIcon } from '../data/customIcons';
 import { PREVIEW_SIZES } from '../app/constants';
 import { stageProps } from '../lib/stage';
 
@@ -13,18 +15,26 @@ export default function DetailPanel({
   size,
   strokeWidth,
   color,
+  category,
+  categories,
+  onMoveCategory,
+  onResetCategory,
   customTags,
   onAddTags,
   onRemoveTag,
   onClose,
   onCopy,
+  hidden,
+  permanent,
+  onDelete,
+  onRestore,
 }) {
   const [rotate, setRotate] = useState(0);
   const [flip, setFlip] = useState(null);
   const [spin, setSpin] = useState(false);
   const [bg, setBg] = useState('checker');
   const [customBg, setCustomBg] = useState('#4f46e5');
-  const icon = ICONS[name];
+  const icon = lookupIcon(name);
 
   useEffect(() => {
     setRotate(0);
@@ -97,16 +107,37 @@ export default function DetailPanel({
             <button className="demo-btn sm" onClick={() => setSpin(!spin)} aria-pressed={spin}>
               <Icon name="loader" size={14} spin={spin} /> 회전 애니메이션
             </button>
+            <DeleteButton
+              hidden={hidden}
+              permanent={permanent}
+              onDelete={onDelete}
+              onRestore={onRestore}
+            />
           </div>
 
+          {permanent && (
+            <p className="hint bg-note">
+              화면에서 추가한 아이콘입니다. 이 브라우저에만 저장되어 있어 삭제하면 되돌릴 수
+              없습니다.
+            </p>
+          )}
+
           <dl className="meta">
-            <dt>분류</dt>
-            <dd>{icon.category}</dd>
             <dt>크기</dt>
             <dd>
               {size}px · 두께 {strokeWidth} · {color}
             </dd>
           </dl>
+
+          <div className="section-label">분류</div>
+          <CategoryPicker
+            value={category}
+            builtin={icon.category}
+            categories={categories}
+            onChange={onMoveCategory}
+            onReset={onResetCategory}
+            onCopy={() => onCopy(`category: '${category}',`, 'category 값')}
+          />
 
           <div className="section-label">태그</div>
           <TagEditor

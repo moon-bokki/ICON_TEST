@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import Icon from './Icon';
 import BgPicker from './BgPicker';
+import CategoryPicker from './CategoryPicker';
 import CodeBlock from './CodeBlock';
+import DeleteButton from './DeleteButton';
 import ExportBox from './ExportBox';
 import TagEditor from './TagEditor';
 import { CAFE } from '../app/constants';
@@ -13,13 +15,19 @@ export default function AssetPanel({
   item,
   size,
   strokeWidth,
+  category,
+  categories,
+  onMoveCategory,
+  onResetCategory,
   customTags,
   onAddTags,
   onRemoveTag,
   onClose,
   onCopy,
   onToast,
-  onRemove,
+  hidden,
+  onDelete,
+  onRestore,
 }) {
   const [{ status, url, meta, bytes }, restart] = useAsset(item.url, item.blob);
   const [bg, setBg] = useState('checker');
@@ -67,16 +75,15 @@ export default function AssetPanel({
             <button className="demo-btn sm" onClick={restart}>
               <Icon name="play" size={13} strokeWidth={strokeWidth} /> 처음부터
             </button>
-            {onRemove && (
-              <button className="demo-btn sm ghost" onClick={onRemove}>
-                <Icon name="trash" size={13} strokeWidth={strokeWidth} /> 목록에서 제거
-              </button>
-            )}
+            <DeleteButton
+              hidden={hidden}
+              permanent={item.dropped}
+              onDelete={onDelete}
+              onRestore={onRestore}
+            />
           </div>
 
           <dl className="meta">
-            <dt>분류</dt>
-            <dd>{CAFE}</dd>
             <dt>원본</dt>
             <dd>{natural ? `${natural.w} × ${natural.h}px` : '…'}</dd>
             <dt>용량</dt>
@@ -94,6 +101,16 @@ export default function AssetPanel({
               <code>{item.dropped ? '(드래그해 추가한 파일)' : path}</code>
             </dd>
           </dl>
+
+          <div className="section-label">분류</div>
+          <CategoryPicker
+            value={category}
+            builtin={CAFE}
+            categories={categories}
+            onChange={onMoveCategory}
+            onReset={onResetCategory}
+            onCopy={() => onCopy(`category: '${category}',`, 'category 값')}
+          />
 
           <div className="section-label">태그</div>
           <TagEditor
