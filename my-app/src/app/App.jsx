@@ -10,9 +10,17 @@ import Toast from '../components/Toast';
 import Toolbar from '../components/Toolbar';
 import { ANIMATED_ICONS } from '../data/animatedIcons';
 import { lookupIcon } from '../data/customIcons';
-import { assetCategory, assetKey, iconCategory } from '../lib/category';
+import { assetCategory, assetKey, categoryKey, iconCategory } from '../lib/category';
 import { copyText } from '../lib/clipboard';
-import { ALL_NAMES, CAFE, CATEGORIES, DEFAULTS, HIDDEN, IMAGE_EXT } from './constants';
+import {
+  ALL_NAMES,
+  CAFE,
+  CATEGORIES,
+  DEFAULTS,
+  FALLBACK_CATEGORY,
+  HIDDEN,
+  IMAGE_EXT,
+} from './constants';
 import {
   useAssetLabels,
   useCustomCategories,
@@ -34,7 +42,8 @@ export default function App() {
   const { customCategories, moveCategory, resetCategory, dropCategory } =
     useCustomCategories(showToast);
   const { customIcons, addIcon, removeIcon } = useCustomIcons(showToast);
-  const { hidden, hide, restore, restoreAll } = useHiddenIcons(showToast);
+  const { hidden, hide, restore, restoreAll, hideCategory, restoreCategories } =
+    useHiddenIcons(showToast);
   const { labels, setLabel } = useAssetLabels(showToast);
 
   const [query, setQuery] = useState('');
@@ -280,11 +289,30 @@ export default function App() {
     const extra = Object.keys(counts).filter(
       (c) => c !== '전체' && c !== CAFE && !CATEGORIES.includes(c) && counts[c] > 0
     );
-    return [...CATEGORIES, ...extra];
-  }, [counts]);
+    return [...CATEGORIES, ...extra].filter((c) => !hidden[categoryKey(c)]);
+  }, [counts, hidden]);
 
   /* 상세 패널의 분류 선택 목록 — cafe On 도 이동 대상에 포함 */
   const pickerCategories = useMemo(() => [...categoryList, CAFE], [categoryList]);
+
+  /** 지운 분류가 하나라도 있으면 되살리기 칩을 보여 준다 */
+  const hasHiddenCategories = useMemo(
+    () => Object.keys(hidden).some((k) => k.startsWith('#')),
+    [hidden]
+  );
+
+  /**
+   * 분류 칩 삭제 — 아이콘은 그대로 두고 상단 필터에서만 감춘다.
+   * 지금 그 분류를 보고 있었다면 전체로 되돌린다.
+   */
+  const deleteCategory = useCallback(
+    (name) => {
+      if (name === FALLBACK_CATEGORY) return;
+      hideCategory(name);
+      setCategory((cur) => (cur === name ? '전체' : cur));
+    },
+    [hideCategory]
+  );
 
   /* 삭제한 아이콘을 모두 복원하면 '숨김' 화면에 머물 이유가 없다 */
   useEffect(() => {
@@ -319,6 +347,9 @@ export default function App() {
         category={category}
         onCategory={setCategory}
         categories={categoryList}
+        onDeleteCategory={deleteCategory}
+        hasHiddenCategories={hasHiddenCategories}
+        onRestoreCategories={restoreCategories}
         counts={counts}
         onAddFiles={addFiles}
         onAddSvg={() => setAdding(true)}

@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import Icon from './Icon';
-import { CAFE, HIDDEN, SWATCHES } from '../app/constants';
+import { CAFE, FALLBACK_CATEGORY, HIDDEN, SWATCHES } from '../app/constants';
 
 /**
  * 검색 · 크기/두께/색상 조절 · 분류 필터
@@ -28,6 +28,9 @@ export default function Toolbar({
   onAddFiles,
   onAddSvg,
   hiddenCount,
+  onDeleteCategory,
+  hasHiddenCategories,
+  onRestoreCategories,
 }) {
   const fileRef = useRef(null);
 
@@ -184,16 +187,38 @@ export default function Toolbar({
           <span className="chip-divider" aria-hidden="true" />
 
           {categories.map((c) => (
-            <button
-              key={c}
-              className="chip"
-              aria-pressed={category === c}
-              onClick={() => onCategory(c)}
-            >
-              {c}
-              <span className="count">{counts[c] ?? 0}</span>
-            </button>
+            <span className="chip-wrap" key={c}>
+              <button
+                className="chip"
+                aria-pressed={category === c}
+                onClick={() => onCategory(c)}
+              >
+                {c}
+                <span className="count">{counts[c] ?? 0}</span>
+              </button>
+              {c !== FALLBACK_CATEGORY && (
+                <button
+                  className="chip-del"
+                  onClick={() => onDeleteCategory(c)}
+                  title={`‘${c}’ 분류 지우기 — 아이콘은 그대로 남습니다`}
+                  aria-label={`${c} 분류 지우기`}
+                >
+                  <Icon name="x" size={10} strokeWidth={2.5} />
+                </button>
+              )}
+            </span>
           ))}
+
+          {hasHiddenCategories && (
+            <button
+              className="chip add"
+              onClick={onRestoreCategories}
+              title="지운 분류를 모두 되살립니다"
+            >
+              <Icon name="refresh" size={13} />
+              분류 되살리기
+            </button>
+          )}
         </div>
       </div>
     </div>

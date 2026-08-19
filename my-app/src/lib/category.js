@@ -20,3 +20,12 @@ export function iconCategory(name, overrides = {}) {
 export function assetCategory(item, overrides = {}, fallback) {
   return overrides[assetKey(item)] || fallback;
 }
+
+/**
+ * 분류 숨김 기록의 저장 키.
+ * 아이콘 이름은 영문 소문자·숫자·하이픈, 이미지 아이콘은 "@파일명" 이라
+ * "#" 을 쓰면 같은 맵에 섞어 두어도 절대 겹치지 않는다.
+ */
+export function categoryKey(name) {
+  return '#' + name;
+}

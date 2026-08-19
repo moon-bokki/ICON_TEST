@@ -9,6 +9,9 @@ export const CATEGORIES = [...new Set(ALL_NAMES.map((n) => ICONS[n].category))];
 /** 사용자가 넣은 이미지 아이콘(icon/ 폴더 + 드래그해 추가한 파일) 묶음 이름 */
 export const CAFE = 'cafe On';
 
+/** 분류를 지웠을 때 남는 기본 분류 — 이 칩은 지울 수 없다 */
+export const FALLBACK_CATEGORY = '기타';
+
 /** 삭제(숨김)한 아이콘만 모아 보는 가상 분류 */
 export const HIDDEN = '숨김';
 

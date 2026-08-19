@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lookupIcon, registerCustomIcons } from '../data/customIcons';
+import { categoryKey } from '../lib/category';
 import { readLocal, writeLocal } from '../data/store/localStore';
 import { isRemote, pullRemote, pushRemote } from '../data/store';
 
@@ -203,7 +204,29 @@ export function useHiddenIcons(showToast) {
     showToast('삭제한 아이콘을 모두 복원했습니다');
   }, [showToast]);
 
-  return { hidden, hide, restore, restoreAll };
+  /**
+   * 분류 칩 숨기기 — 아이콘은 그대로 두고 상단 필터에서만 감춘다.
+   * 소속 아이콘을 건드리지 않으므로 복원하면 원래대로 완전히 돌아온다.
+   */
+  const hideCategory = useCallback(
+    (name) => {
+      setHidden((prev) => ({ ...prev, [categoryKey(name)]: true }));
+      showToast(`‘${name}’ 분류를 지웠습니다 · 아이콘은 그대로 있습니다`);
+    },
+    [showToast]
+  );
+
+  /** 지운 분류를 모두 되살린다 (아이콘 숨김 기록은 건드리지 않음) */
+  const restoreCategories = useCallback(() => {
+    setHidden((prev) => {
+      const next = {};
+      for (const k of Object.keys(prev)) if (!k.startsWith('#')) next[k] = prev[k];
+      return next;
+    });
+    showToast('지운 분류를 모두 되살렸습니다');
+  }, [showToast]);
+
+  return { hidden, hide, restore, restoreAll, hideCategory, restoreCategories };
 }
 
 /**
