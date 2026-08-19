@@ -424,7 +424,7 @@ export default function App() {
 
       {adding && (
         <AddIconDialog
-          categories={categoryList}
+          categories={pickerCategories}
           strokeWidth={strokeWidth}
           color={color}
           existingNames={allNames}

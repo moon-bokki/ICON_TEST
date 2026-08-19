@@ -9,7 +9,11 @@
  */
 const env = import.meta.env || {};
 const url = String(env.VITE_SUPABASE_URL || '').trim().replace(/\/+$/, '');
-const anonKey = String(env.VITE_SUPABASE_ANON_KEY || '').trim();
+// Supabase 가 키 이름을 바꿔(anon public → Publishable key) 대시보드가 알려주는 이름이
+// 프로젝트 생성 시점에 따라 다르다. 둘 다 같은 공개 키라 어느 쪽이든 받는다.
+const anonKey = String(
+  env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY || ''
+).trim();
 
 export const supabase = url && anonKey ? { url, anonKey } : null;
 
