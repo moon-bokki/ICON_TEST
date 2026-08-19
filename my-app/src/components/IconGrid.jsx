@@ -31,7 +31,7 @@ export default function IconGrid({
         <button
           key={item.url}
           className={`cell asset${extra}`}
-          aria-selected={selected?.type === 'asset' && selected.item === item}
+          aria-selected={selected?.type === 'asset' && selected.item.url === item.url}
           onClick={() => onSelect({ type: 'asset', item })}
           title={`${item.file} — 클릭하면 상세 보기`}
         >

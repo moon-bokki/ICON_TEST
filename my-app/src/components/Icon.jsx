@@ -1,5 +1,5 @@
 import { forwardRef, useMemo } from "react";
-import { lookupIcon } from "../data/customIcons";
+import { iconScale, lookupIcon } from "../data/customIcons";
 
 /**
  * 아이콘 컴포넌트
@@ -57,7 +57,9 @@ const Icon = forwardRef(function Icon(
   const numeric =
     typeof size === "number" || /^\d+(\.\d+)?$/.test(String(size));
   const px = numeric ? Number(size) : null;
-  const sw = absoluteStrokeWidth && px ? (strokeWidth * 24) / px : strokeWidth;
+  // 크기 보정으로 줄어든 만큼 두께를 되돌린다 (아래 iconScale 설명 참고)
+  const base = absoluteStrokeWidth && px ? (strokeWidth * 24) / px : strokeWidth;
+  const sw = base / iconScale(icon);
 
   const cls = [
     "ui-icon",
@@ -114,9 +116,10 @@ export function toSvgString(
 ) {
   const icon = lookupIcon(name);
   if (!icon) return "";
+  const sw = Number((strokeWidth / iconScale(icon)).toFixed(4));
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" ` +
-    `fill="none" stroke="${color}" stroke-width="${strokeWidth}" ` +
+    `fill="none" stroke="${color}" stroke-width="${sw}" ` +
     (color === "currentColor" ? "" : `color="${color}" `) +
     `stroke-linecap="round" stroke-linejoin="round">` +
     icon.body.replace(/\/><path/g, "/>\n  <path").replace(/^</, "\n  <") +

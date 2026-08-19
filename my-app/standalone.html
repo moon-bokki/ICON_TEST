@@ -470,6 +470,65 @@
       return ICONS[name] || CUSTOM_ICONS[name];
     }
 
+    /**
+     * 아이콘에 걸린 크기 보정 배율.
+     *
+     * viewBox 가 24×24 가 아닌 SVG 는 <g transform="scale(k)"> 로 감싸 맞추는데,
+     * scale() 은 선 두께까지 k 배로 줄인다. Icon 이 두께를 1/k 로 키워 되돌리도록
+     * 그 배율을 알려 준다. scale 값이 없는 예전 데이터는 body 에서 직접 읽는다.
+     */
+    function iconScale(icon) {
+      if (!icon) return 1;
+      if (icon.scale) return icon.scale;
+      const m = /^<g transform="scale\(([0-9.]+)\)/.exec(icon.body || '');
+      return m ? Number(m[1]) || 1 : 1;
+    }
+
+    /* ───── src/data/store/localStore.js ───── */
+    /**
+     * localStorage 저장소
+     * 원격을 쓰든 안 쓰든 항상 여기에 먼저 써 둔다 — 즉시 반영되고, 오프라인·미설정 시 폴백이 된다.
+     */
+    function readLocal(key, fallback = {}) {
+      try {
+        return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
+    function writeLocal(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        /* 용량 초과 등 — 화면 동작은 계속되어야 하므로 무시 */
+      }
+    }
+
+    /* ───── src/data/store/index.js ───── */
+    /**
+     * 저장소 선택
+     *
+     * Supabase 설정(.env.local)이 있으면 원격과 동기화하고, 없으면 localStorage 만 쓴다.
+     * standalone.html 에는 Supabase 파일이 포함되지 않으므로 supabase 심볼 자체가 없다.
+     * 그래서 typeof 로 확인해 항상 로컬 모드로 떨어지게 한다.
+     */
+
+
+    const isRemote = typeof supabase !== 'undefined' && !!supabase;
+
+    /** 원격에서 맵을 읽어온다 (로컬 모드면 null) */
+    async function pullRemote(kind) {
+      if (!isRemote) return null;
+      return supabaseFetch(kind);
+    }
+
+    /** 맵을 원격에 반영한다 (로컬 모드면 아무것도 하지 않음) */
+    async function pushRemote(kind, map) {
+      if (!isRemote) return;
+      await supabaseSave(kind, map);
+    }
+
     /* ───── src/lib/clipboard.js ───── */
     /**
      * 클립보드 복사
@@ -641,7 +700,9 @@
       if (scale !== 1) transform.push(`scale(${scale})`);
       if (minX || minY) transform.push(`translate(${round(-minX)} ${round(-minY)})`);
       if (scale !== 1) {
-        warnings.push(`원본이 ${round(w)}×${round(h)} 라 ${scale}배로 맞췄습니다.`);
+        warnings.push(
+          `원본이 ${round(w)}×${round(h)} 라 ${scale}배로 맞췄습니다. (선 두께는 자동 보정됩니다)`
+        );
       }
       if (Math.abs(w - h) > 0.01) {
         warnings.push('가로세로 비율이 정사각형이 아닙니다. 위치가 치우쳐 보일 수 있습니다.');
@@ -679,16 +740,18 @@
       if (mode === 'fill') body = `<g fill="currentColor" stroke="none">${body}</g>`;
       if (transform.length) body = `<g transform="${transform.join(' ')}">${body}</g>`;
 
-      return { body, mode, size: `${round(w)}×${round(h)}`, warnings };
+      // scale 은 Icon 이 선 두께를 되돌리는 데 쓴다 (scale() 은 두께까지 줄이므로)
+      return { body, mode, scale, size: `${round(w)}×${round(h)}`, warnings };
     }
 
     /** icons.js 에 그대로 붙여넣을 수 있는 코드 조각 */
-    function toIconsJsSnippet(name, { category, tags = [], body }) {
+    function toIconsJsSnippet(name, { category, tags = [], body, scale }) {
       const tagList = tags.map((t) => `'${t.replace(/'/g, "\\'")}'`).join(', ');
       return (
         `  '${name}': {\n` +
         `    category: '${category}',\n` +
         `    tags: [${tagList}],\n` +
+        (scale && scale !== 1 ? `    scale: ${scale}, // 선 두께 보정\n` : '') +
         `    body: '${body.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}',\n` +
         `  },`
       );
@@ -968,6 +1031,9 @@
     const HIDDEN = '숨김';
 
     const IMAGE_EXT = /\.(gif|png|apng|webp|svg|avif|jpe?g)$/i;
+
+    /** 아이콘 이름 규칙 — 영문 소문자·숫자·하이픈 (JSX 와 icons.js 키로 쓰이므로) */
+    const ICON_NAME_RULE = /^[a-z0-9][a-z0-9-]*$/;
     const SWATCHES = ['currentColor', '#4f46e5', '#0ea5e9', '#16a34a', '#f59e0b', '#dc2626'];
     const PREVIEW_SIZES = [12, 16, 20, 24, 32, 48, 64];
 
@@ -977,11 +1043,17 @@
     /* ───── src/app/hooks.js ───── */
     /**
      * 앱 전용 훅
-     * - useTheme            : 라이트/다크 (localStorage 저장)
+     * - useTheme            : 라이트/다크 (이 기기 설정이라 항상 localStorage)
      * - useToast            : 짧게 떴다 사라지는 알림
-     * - useCustomTags       : 사용자가 덧붙인 검색 태그 (localStorage 저장)
-     * - useCustomCategories : 사용자가 옮긴 분류 (localStorage 저장)
+     * - useSyncedMap        : 아래 훅들이 공유하는 저장 계층 (localStorage + Supabase)
+     * - useCustomTags       : 사용자가 덧붙인 검색 태그
+     * - useCustomCategories : 사용자가 옮긴 분류
+     * - useCustomIcons      : 화면에서 추가한 SVG 아이콘
+     * - useHiddenIcons      : 삭제(숨김)한 아이콘
+     * - useAssetLabels      : 이미지 아이콘의 표시 이름
      */
+
+
 
 
     const THEME_KEY = 'icon-tester-theme';
@@ -989,6 +1061,56 @@
     const CATEGORY_KEY = 'icon-tester-categories';
     const CUSTOM_ICON_KEY = 'icon-tester-custom-icons';
     const HIDDEN_KEY = 'icon-tester-hidden';
+    const LABEL_KEY = 'icon-tester-labels';
+
+    /** 맵에서 키 하나를 지운 새 객체 (없으면 원본 그대로) */
+    function withoutKey(map, key) {
+      if (!(key in map)) return map;
+      const copy = { ...map };
+      delete copy[key];
+      return copy;
+    }
+
+    /**
+     * 저장되는 맵 하나를 관리한다.
+     *
+     * 1. 첫 렌더는 localStorage 값으로 즉시 그린다 (기다리지 않는다)
+     * 2. Supabase 가 설정돼 있으면 원격 값을 받아 덮어쓴다
+     * 3. 값이 바뀌면 localStorage 에 쓰고 원격에도 반영한다
+     *
+     * 원격을 받아오기 전에 밀어 올리면 남의 데이터를 지울 수 있으므로,
+     * 처음 불러오기가 끝나기 전에는 push 하지 않는다.
+     */
+    function useSyncedMap(kind, cacheKey, showToast) {
+      const [map, setMap] = useState(() => readLocal(cacheKey, {}));
+      const loaded = useRef(!isRemote);
+
+      useEffect(() => {
+        if (!isRemote) return;
+        let alive = true;
+        pullRemote(kind)
+          .then((remote) => {
+            if (!alive || !remote) return;
+            setMap(remote);
+            writeLocal(cacheKey, remote);
+          })
+          .catch((e) => showToast?.(`동기화 실패 — ${e.message}`))
+          .finally(() => {
+            if (alive) loaded.current = true;
+          });
+        return () => {
+          alive = false;
+        };
+      }, [kind, cacheKey, showToast]);
+
+      useEffect(() => {
+        writeLocal(cacheKey, map);
+        if (!isRemote || !loaded.current) return;
+        pushRemote(kind, map).catch((e) => showToast?.(`저장 실패 — ${e.message}`));
+      }, [kind, cacheKey, map, showToast]);
+
+      return [map, setMap];
+    }
 
     function useTheme() {
       const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'light');
@@ -1023,17 +1145,7 @@
      * 키: 라인 아이콘은 아이콘 이름, 이미지 아이콘은 "@파일명"
      */
     function useCustomTags(showToast) {
-      const [customTags, setCustomTags] = useState(() => {
-        try {
-          return JSON.parse(localStorage.getItem(TAGS_KEY) || '{}');
-        } catch {
-          return {};
-        }
-      });
-
-      useEffect(() => {
-        localStorage.setItem(TAGS_KEY, JSON.stringify(customTags));
-      }, [customTags]);
+      const [customTags, setCustomTags] = useSyncedMap('tag', TAGS_KEY, showToast);
 
       const addTags = useCallback(
         (key, raw) => {
@@ -1066,7 +1178,35 @@
         });
       }, []);
 
-      return { customTags, addTags, removeTag };
+      /** 이름을 바꾼 뒤 남은 옛 키를 정리한다 */
+      const dropTags = useCallback((key) => setCustomTags((prev) => withoutKey(prev, key)), []);
+
+      return { customTags, addTags, removeTag, dropTags };
+    }
+
+    /**
+     * 이미지 아이콘(cafe On)의 표시 이름.
+     *
+     * 이미지 아이콘은 파일명이 곧 정체라서 이름을 진짜로 바꿀 수는 없다.
+     * 대신 목록·검색·코드 조각·내보내기 파일명에 쓰이는 '라벨'만 갈아 끼운다.
+     * 원래 파일명과 같아지면 항목을 지워 저장소를 깨끗하게 유지한다.
+     */
+    function useAssetLabels(showToast) {
+      const [labels, setLabels] = useSyncedMap('label', LABEL_KEY, showToast);
+
+      const setLabel = useCallback(
+        (key, next, original) => {
+          const name = String(next).trim();
+          if (!name) return;
+          setLabels((prev) => (name === original ? withoutKey(prev, key) : { ...prev, [key]: name }));
+          showToast(
+            name === original ? `원래 이름 ‘${original}’ 로 되돌렸습니다` : `이름을 ‘${name}’ 로 바꿨습니다`
+          );
+        },
+        [showToast]
+      );
+
+      return { labels, setLabel };
     }
 
     /**
@@ -1077,17 +1217,7 @@
      * 키 규칙은 태그·분류와 같다 — 라인 아이콘은 이름, 이미지 아이콘은 "@파일명".
      */
     function useHiddenIcons(showToast) {
-      const [hidden, setHidden] = useState(() => {
-        try {
-          return JSON.parse(localStorage.getItem(HIDDEN_KEY) || '{}');
-        } catch {
-          return {};
-        }
-      });
-
-      useEffect(() => {
-        localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden));
-      }, [hidden]);
+      const [hidden, setHidden] = useSyncedMap('hidden', HIDDEN_KEY, showToast);
 
       const hide = useCallback(
         (key, label) => {
@@ -1123,25 +1253,15 @@
      * localStorage 에 저장하고, Icon 컴포넌트가 찾을 수 있도록 레지스트리에 등록한다.
      */
     function useCustomIcons(showToast) {
-      const [customIcons, setCustomIcons] = useState(() => {
-        try {
-          return JSON.parse(localStorage.getItem(CUSTOM_ICON_KEY) || '{}');
-        } catch {
-          return {};
-        }
-      });
+      const [customIcons, setCustomIcons] = useSyncedMap('icons', CUSTOM_ICON_KEY, showToast);
 
       // 렌더 도중 등록해야 이번 렌더에서 바로 그릴 수 있다
       useMemo(() => registerCustomIcons(customIcons), [customIcons]);
 
-      useEffect(() => {
-        localStorage.setItem(CUSTOM_ICON_KEY, JSON.stringify(customIcons));
-      }, [customIcons]);
-
       const addIcon = useCallback(
-        (name, def) => {
+        (name, def, message) => {
           setCustomIcons((prev) => ({ ...prev, [name]: def }));
-          showToast(`‘${name}’ 아이콘을 추가했습니다`);
+          showToast(message || `‘${name}’ 아이콘을 추가했습니다`);
         },
         [showToast]
       );
@@ -1168,17 +1288,7 @@
      * 기본 분류로 되돌아가면 항목을 지워 저장소를 깨끗하게 유지한다.
      */
     function useCustomCategories(showToast) {
-      const [customCategories, setCustomCategories] = useState(() => {
-        try {
-          return JSON.parse(localStorage.getItem(CATEGORY_KEY) || '{}');
-        } catch {
-          return {};
-        }
-      });
-
-      useEffect(() => {
-        localStorage.setItem(CATEGORY_KEY, JSON.stringify(customCategories));
-      }, [customCategories]);
+      const [customCategories, setCustomCategories] = useSyncedMap('category', CATEGORY_KEY, showToast);
 
       const moveCategory = useCallback(
         (key, next, builtin) => {
@@ -1212,7 +1322,13 @@
         [showToast]
       );
 
-      return { customCategories, moveCategory, resetCategory };
+      /** 이름을 바꾼 뒤 남은 옛 키를 정리한다 */
+      const dropCategory = useCallback(
+        (key) => setCustomCategories((prev) => withoutKey(prev, key)),
+        []
+      );
+
+      return { customCategories, moveCategory, resetCategory, dropCategory };
     }
 
     /* ───── src/components/Icon.jsx ───── */
@@ -1272,7 +1388,9 @@
       const numeric =
         typeof size === "number" || /^\d+(\.\d+)?$/.test(String(size));
       const px = numeric ? Number(size) : null;
-      const sw = absoluteStrokeWidth && px ? (strokeWidth * 24) / px : strokeWidth;
+      // 크기 보정으로 줄어든 만큼 두께를 되돌린다 (아래 iconScale 설명 참고)
+      const base = absoluteStrokeWidth && px ? (strokeWidth * 24) / px : strokeWidth;
+      const sw = base / iconScale(icon);
 
       const cls = [
         "ui-icon",
@@ -1329,9 +1447,10 @@
     ) {
       const icon = lookupIcon(name);
       if (!icon) return "";
+      const sw = Number((strokeWidth / iconScale(icon)).toFixed(4));
       return (
         `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" ` +
-        `fill="none" stroke="${color}" stroke-width="${strokeWidth}" ` +
+        `fill="none" stroke="${color}" stroke-width="${sw}" ` +
         (color === "currentColor" ? "" : `color="${color}" `) +
         `stroke-linecap="round" stroke-linejoin="round">` +
         icon.body.replace(/\/><path/g, "/>\n  <path").replace(/^</, "\n  <") +
@@ -1395,6 +1514,75 @@
           <Icon name="trash" size={14} />
           삭제
         </button>
+      );
+    }
+
+    /* ───── src/components/NameEditor.jsx ───── */
+    /**
+     * 상세 패널 머리말의 이름 편집기
+     * 평소에는 이름만 보여 주고, 연필 버튼을 누르면 입력칸으로 바뀐다.
+     */
+    function NameEditor({ name, existingNames, onRename, freeform }) {
+      const [editing, setEditing] = useState(false);
+      const [draft, setDraft] = useState(name);
+
+      // 이미지 아이콘의 라벨은 코드 키가 아니라 표시용이라 한글·대문자도 허용한다
+      const value = freeform ? draft.trim() : draft.trim().toLowerCase();
+      const unchanged = value === name;
+      const duplicate = !unchanged && existingNames.includes(value);
+      const invalid = !freeform && !!value && !ICON_NAME_RULE.test(value);
+      const ready = !!value && !duplicate && !invalid;
+
+      const open = () => {
+        setDraft(name);
+        setEditing(true);
+      };
+
+      const close = () => {
+        setEditing(false);
+        setDraft(name);
+      };
+
+      const submit = (e) => {
+        e.preventDefault();
+        if (!ready) return;
+        if (!unchanged) onRename(value);
+        setEditing(false);
+      };
+
+      if (!editing) {
+        return (
+          <>
+            <span className="title">{name}</span>
+            <button className="icon-btn" onClick={open} title="이름 수정" aria-label="이름 수정">
+              <Icon name="edit" size={15} />
+            </button>
+          </>
+        );
+      }
+
+      return (
+        <form className="name-editor" onSubmit={submit}>
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => e.key === 'Escape' && close()}
+            aria-label="아이콘 이름"
+            aria-invalid={duplicate || invalid}
+          />
+          <button type="submit" className="icon-btn" disabled={!ready} title="확인" aria-label="확인">
+            <Icon name="check" size={16} />
+          </button>
+          <button type="button" className="icon-btn" onClick={close} title="취소" aria-label="취소">
+            <Icon name="x" size={16} />
+          </button>
+          {(duplicate || invalid) && (
+            <span className="name-error">
+              {duplicate ? '이미 있는 이름입니다' : '영문 소문자·숫자·하이픈(-)만 쓸 수 있습니다'}
+            </span>
+          )}
+        </form>
       );
     }
 
@@ -1553,7 +1741,6 @@
 
     /* ───── src/components/AddIconDialog.jsx ───── */
     const IMPORT_PREVIEW_SIZES = [16, 24, 32, 48];
-    const NAME_RULE = /^[a-z0-9][a-z0-9-]*$/;
 
     /**
      * SVG 아이콘 추가 대화상자
@@ -1594,7 +1781,7 @@
         .filter(Boolean);
 
       const duplicate = !!name && existingNames.includes(name);
-      const badName = !!name && !NAME_RULE.test(name);
+      const badName = !!name && !ICON_NAME_RULE.test(name);
       const ready = parsed?.ok && name && !duplicate && !badName;
 
       const readFile = async (file) => {
@@ -1604,13 +1791,13 @@
       };
 
       const snippet = ready
-        ? toIconsJsSnippet(name, { category, tags, body: parsed.body })
+        ? toIconsJsSnippet(name, { category, tags, body: parsed.body, scale: parsed.scale })
         : '';
 
       const submit = (e) => {
         e.preventDefault();
         if (!ready) return;
-        onAdd(name, { category, tags, body: parsed.body, custom: true });
+        onAdd(name, { category, tags, body: parsed.body, scale: parsed.scale, custom: true });
         onClose();
       };
 
@@ -1694,7 +1881,7 @@
                           height={s}
                           fill="none"
                           stroke={previewColor}
-                          strokeWidth={previewStroke}
+                          strokeWidth={previewStroke / (parsed.scale || 1)}
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           style={previewColor === 'currentColor' ? undefined : { color: previewColor }}
@@ -2310,7 +2497,7 @@
             <button
               key={item.url}
               className={`cell asset${extra}`}
-              aria-selected={selected?.type === 'asset' && selected.item === item}
+              aria-selected={selected?.type === 'asset' && selected.item.url === item.url}
               onClick={() => onSelect({ type: 'asset', item })}
               title={`${item.file} — 클릭하면 상세 보기`}
             >
@@ -2394,6 +2581,8 @@
       permanent,
       onDelete,
       onRestore,
+      existingNames,
+      onRename,
     }) {
       const [rotate, setRotate] = useState(0);
       const [flip, setFlip] = useState(null);
@@ -2430,7 +2619,7 @@
           <aside className="panel" role="dialog" aria-label={`${name} 아이콘 상세`}>
             <div className="panel-head">
               <Icon name={name} size={20} strokeWidth={strokeWidth} />
-              <span className="title">{name}</span>
+              <NameEditor name={name} existingNames={existingNames} onRename={onRename} />
               <span className="spacer" />
               <button className="icon-btn" onClick={onClose} aria-label="닫기">
                 <Icon name="x" size={17} />
@@ -2562,6 +2751,8 @@
       hidden,
       onDelete,
       onRestore,
+      existingNames,
+      onRename,
     }) {
       const [{ status, url, meta, bytes }, restart] = useAsset(item.url, item.blob);
       const [bg, setBg] = useState('checker');
@@ -2584,7 +2775,7 @@
           <aside className="panel" role="dialog" aria-label={`${item.file} 상세`}>
             <div className="panel-head">
               <img src={url} alt="" width={20} height={20} style={{ objectFit: 'contain' }} />
-              <span className="title">{item.file}</span>
+              <NameEditor name={item.name} existingNames={existingNames} onRename={onRename} freeform />
               <span className="spacer" />
               <button className="icon-btn" onClick={onClose} aria-label="닫기">
                 <Icon name="x" size={17} />
@@ -2618,6 +2809,10 @@
               </div>
 
               <dl className="meta">
+                <dt>파일</dt>
+                <dd>
+                  <code>{item.file}</code>
+                </dd>
                 <dt>원본</dt>
                 <dd>{natural ? `${natural.w} × ${natural.h}px` : '…'}</dd>
                 <dt>용량</dt>
@@ -2696,10 +2891,12 @@
     function App() {
       const [theme, toggleTheme] = useTheme();
       const [toast, showToast] = useToast();
-      const { customTags, addTags, removeTag } = useCustomTags(showToast);
-      const { customCategories, moveCategory, resetCategory } = useCustomCategories(showToast);
+      const { customTags, addTags, removeTag, dropTags } = useCustomTags(showToast);
+      const { customCategories, moveCategory, resetCategory, dropCategory } =
+        useCustomCategories(showToast);
       const { customIcons, addIcon, removeIcon } = useCustomIcons(showToast);
       const { hidden, hide, restore, restoreAll } = useHiddenIcons(showToast);
+      const { labels, setLabel } = useAssetLabels(showToast);
 
       const [query, setQuery] = useState('');
       const [category, setCategory] = useState('전체');
@@ -2747,6 +2944,42 @@
         [showToast]
       );
 
+      /**
+       * 아이콘 이름 바꾸기
+       *
+       * 이름은 곧 아이콘을 찾는 키라서, 새 이름으로 등록한 뒤 옛 이름을 정리하는 방식으로 처리한다.
+       * - 화면에서 추가한 아이콘 : 옛 항목을 지운다
+       * - 기본 아이콘           : icons.js 는 고칠 수 없으므로 원본을 숨기고 새 이름으로 등록한다
+       *                          (숨김에서 언제든 원래 아이콘을 되살릴 수 있다)
+       * 붙여 둔 태그와 옮겨 둔 분류도 새 이름으로 따라간다.
+       */
+      const renameIcon = useCallback(
+        (oldName, newName) => {
+          const def = lookupIcon(oldName);
+          if (!def || oldName === newName) return;
+
+          const wasCustom = !!customIcons[oldName];
+          const tags = [...new Set([...(def.tags || []), ...(customTags[oldName] || [])])];
+
+          const category = iconCategory(oldName, customCategories);
+
+          // 옛 이름 정리를 먼저 — 알림이 이름 변경 메시지로 끝나도록
+          dropTags(oldName);
+          dropCategory(oldName);
+          if (wasCustom) removeIcon(oldName);
+          else hide(oldName, oldName);
+
+          addIcon(
+            newName,
+            { category, tags, body: def.body, scale: def.scale, custom: true },
+            `이름을 ‘${newName}’ 로 바꿨습니다`
+          );
+
+          setSelected({ type: 'icon', name: newName });
+        },
+        [customIcons, customTags, customCategories, addIcon, removeIcon, hide, dropTags, dropCategory]
+      );
+
       const resetControls = useCallback(() => {
         setSize(DEFAULTS.size);
         setStrokeWidth(DEFAULTS.strokeWidth);
@@ -2755,7 +2988,23 @@
       }, []);
 
       /* ── cafe On : 사용자 이미지 아이콘 ───────── */
-      const assets = useMemo(() => [...ANIMATED_ICONS, ...extraAssets], [extraAssets]);
+      /** 바꾼 라벨을 입혀 둔다 — 목록·검색·코드 조각·내보내기 파일명이 모두 이 이름을 쓴다 */
+      const assets = useMemo(() => {
+        const all = [...ANIMATED_ICONS, ...extraAssets];
+        return all.map((a) => {
+          const label = labels[assetKey(a)];
+          return label ? { ...a, name: label } : a;
+        });
+      }, [extraAssets, labels]);
+
+      /** 라벨을 바꾸면 객체가 새로 만들어지므로, 열려 있는 패널은 최신 것을 다시 찾아 쓴다 */
+      const selectedAsset = useMemo(
+        () =>
+          selected?.type === 'asset'
+            ? assets.find((a) => a.url === selected.item.url) || selected.item
+            : null,
+        [selected, assets]
+      );
 
       const addFiles = useCallback(
         (fileList) => {
@@ -2779,10 +3028,11 @@
         [showToast]
       );
 
+      /* url 은 에셋마다 고유하다 — 라벨을 바꾸면 객체가 새로 생기므로 참조 대신 url 로 비교한다 */
       const removeAsset = useCallback((item) => {
-        setExtraAssets((prev) => prev.filter((x) => x !== item));
+        setExtraAssets((prev) => prev.filter((x) => x.url !== item.url));
         if (item.url?.startsWith('blob:')) URL.revokeObjectURL(item.url);
-        setSelected((s) => (s?.type === 'asset' && s.item === item ? null : s));
+        setSelected((s) => (s?.type === 'asset' && s.item.url === item.url ? null : s));
       }, []);
 
       /* 페이지 어디에 놓아도 파일이 추가되도록 */
@@ -2997,33 +3247,39 @@
                 restore(selected.name, selected.name);
                 setSelected(null);
               }}
+              existingNames={allNames}
+              onRename={(next) => renameIcon(selected.name, next)}
             />
           )}
           {selected?.type === 'asset' && (
             <AssetPanel
-              item={selected.item}
+              item={selectedAsset}
               size={size}
               strokeWidth={strokeWidth}
-              category={assetCategory(selected.item, customCategories, CAFE)}
+              category={assetCategory(selectedAsset, customCategories, CAFE)}
               categories={pickerCategories}
-              onMoveCategory={(c) => moveCategory(assetKey(selected.item), c, CAFE)}
-              onResetCategory={() => resetCategory(assetKey(selected.item), CAFE)}
-              customTags={customTags[assetKey(selected.item)] || []}
-              onAddTags={(raw) => addTags(assetKey(selected.item), raw)}
-              onRemoveTag={(tag) => removeTag(assetKey(selected.item), tag)}
+              onMoveCategory={(c) => moveCategory(assetKey(selectedAsset), c, CAFE)}
+              onResetCategory={() => resetCategory(assetKey(selectedAsset), CAFE)}
+              customTags={customTags[assetKey(selectedAsset)] || []}
+              onAddTags={(raw) => addTags(assetKey(selectedAsset), raw)}
+              onRemoveTag={(tag) => removeTag(assetKey(selectedAsset), tag)}
               onClose={() => setSelected(null)}
               onCopy={copy}
               onToast={showToast}
-              hidden={!!hidden[assetKey(selected.item)]}
+              hidden={!!hidden[assetKey(selectedAsset)]}
               onDelete={() => {
-                if (selected.item.dropped) removeAsset(selected.item);
-                else hide(assetKey(selected.item), selected.item.file);
+                if (selectedAsset.dropped) removeAsset(selectedAsset);
+                else hide(assetKey(selectedAsset), selectedAsset.file);
                 setSelected(null);
               }}
               onRestore={() => {
-                restore(assetKey(selected.item), selected.item.file);
+                restore(assetKey(selectedAsset), selectedAsset.file);
                 setSelected(null);
               }}
+              existingNames={assets.filter((a) => a.url !== selectedAsset.url).map((a) => a.name)}
+              onRename={(next) =>
+                setLabel(assetKey(selectedAsset), next, selectedAsset.file.replace(/\.[^.]+$/, ''))
+              }
             />
           )}
 

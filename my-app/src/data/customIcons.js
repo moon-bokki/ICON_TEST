@@ -19,3 +19,17 @@ export function registerCustomIcons(map) {
 export function lookupIcon(name) {
   return ICONS[name] || CUSTOM_ICONS[name];
 }
+
+/**
+ * 아이콘에 걸린 크기 보정 배율.
+ *
+ * viewBox 가 24×24 가 아닌 SVG 는 <g transform="scale(k)"> 로 감싸 맞추는데,
+ * scale() 은 선 두께까지 k 배로 줄인다. Icon 이 두께를 1/k 로 키워 되돌리도록
+ * 그 배율을 알려 준다. scale 값이 없는 예전 데이터는 body 에서 직접 읽는다.
+ */
+export function iconScale(icon) {
+  if (!icon) return 1;
+  if (icon.scale) return icon.scale;
+  const m = /^<g transform="scale\(([0-9.]+)\)/.exec(icon.body || '');
+  return m ? Number(m[1]) || 1 : 1;
+}

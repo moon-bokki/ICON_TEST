@@ -23,6 +23,23 @@ npm run dev
 | `npm run build`      | `dist/` 로 프로덕션 빌드          |
 | `npm run standalone` | `standalone.html` 재생성          |
 
+## 데이터 저장 위치
+
+화면에서 추가·수정한 내용(아이콘 · 태그 · 분류 이동 · 삭제 기록 · 이미지 라벨)은 두 곳 중
+하나에 저장됩니다.
+
+| 설정 | 저장 위치 | 범위 |
+| ---- | --------- | ---- |
+| 기본 | 브라우저 **localStorage** | 이 브라우저에서만 |
+| `.env.local` 에 Supabase 키 입력 | **Supabase** (원격 DB) | 모든 기기·모든 방문자 |
+
+Supabase 를 켜면 첫 화면은 localStorage 값으로 즉시 그리고, 곧바로 원격 값을 받아 덮어씁니다.
+연결이 없거나 실패해도 localStorage 로 계속 동작합니다. 설정 방법은
+[supabase/README.md](supabase/README.md) 를 보세요.
+
+> 테마(다크/라이트)는 기기별 설정이라 항상 localStorage 에만 저장됩니다.
+> `standalone.html` 은 Supabase 를 쓰지 않고 항상 localStorage 로 동작합니다.
+
 ## 파일 구조
 
 ```
@@ -30,6 +47,11 @@ my-app/
 ├─ standalone.html      ← 더블클릭 실행 (자동 생성물, 직접 수정 금지)
 ├─ build-standalone.js  ← src/ → standalone.html 생성기
 ├─ index.html           ← Vite 진입점
+├─ .env.example         ← Supabase 키 서식 (.env.local 로 복사해서 사용)
+├─ supabase/            ← 원격 저장소 설정
+│  ├─ README.md            ← 프로젝트 생성 · 연결 방법
+│  └─ migrations/
+│     └─ 0001_init.sql     ← 테이블 · RLS 정책
 ├─ package.json
 ├─ vite.config.js
 ├─ icon/                ← cafe On 이미지 아이콘 (GIF·PNG·SVG 등)
@@ -56,8 +78,15 @@ my-app/
    │  └─ Toast.jsx            ← 알림
    ├─ data/                ← 데이터
    │  ├─ icons.js             ← 아이콘 데이터셋 (단일 소스)
-   │  └─ animatedIcons.js     ← icon/ 폴더 자동 수집
+   │  ├─ customIcons.js       ← 화면에서 추가한 아이콘 레지스트리
+   │  ├─ animatedIcons.js     ← icon/ 폴더 자동 수집
+   │  └─ store/               ← 저장소 (로컬 · 원격)
+   │     ├─ index.js             ← 설정에 따라 로컬/원격 선택
+   │     ├─ localStore.js        ← localStorage
+   │     └─ supabaseStore.js     ← Supabase 읽기·쓰기
    ├─ lib/                 ← UI 와 무관한 순수 유틸
+   │  ├─ supabase.js          ← Supabase 연결 설정 (REST)
+   │  ├─ svgImport.js         ← 붙여넣은 SVG → 아이콘 변환
    │  ├─ assetUtils.js        ← GIF 파싱 · 에셋 로더 · 리사이즈/내보내기
    │  ├─ clipboard.js         ← 복사 (file:// 폴백 포함)
    │  └─ stage.js             ← 미리보기 배경 · 대비 글자색 계산
@@ -118,6 +147,13 @@ import Icon from './components/Icon';
   `currentColor` 로 칠하도록 처리하고, 스크립트·이벤트 핸들러는 제거합니다. 추가한 아이콘은
   툴바의 색상·두께 조절이 그대로 적용되고 이 브라우저(localStorage)에 저장되며, 상세 패널에서
   삭제할 수 있습니다. **icons.js 에 넣을 코드**가 함께 만들어지므로 소스에 영구 반영도 쉽습니다.
+- **이름 수정** — 상세 패널 제목 옆의 연필 버튼으로 아이콘 이름을 바꿀 수 있습니다.
+  이름은 곧 `<Icon name="…" />` 의 키라서, 새 이름으로 다시 등록하고 붙여 둔 태그·분류를
+  함께 옮깁니다. 기본 아이콘은 `src/data/icons.js` 를 고칠 수 없으므로 원본을 **숨김** 으로
+  넣어 두므로 언제든 되돌릴 수 있습니다. 중복된 이름과 잘못된 문자는 입력 단계에서 막습니다.
+  cafe On 이미지 아이콘도 같은 자리에서 **표시 이름(라벨)** 을 바꿀 수 있습니다. 파일명은
+  그대로 두고 목록·검색·코드 조각·내보내기 파일명에 쓰이는 이름만 바뀌며, 한글도 쓸 수
+  있습니다. 원래 파일명을 다시 입력하면 되돌아갑니다.
 - **아이콘 삭제 · 복원** — 상세 패널의 **삭제** 버튼으로 아이콘을 목록에서 없앨 수 있습니다.
   기본 아이콘과 `icon/` 폴더의 이미지는 소스를 건드리지 않고 **감추는** 방식이라, 툴바에 나타나는
   **숨김** 칩에서 하나씩 또는 **모두 복원**으로 되돌릴 수 있습니다. 화면에서 추가한 아이콘과

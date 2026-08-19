@@ -2,10 +2,9 @@ import { useMemo, useRef, useState } from 'react';
 import Icon from './Icon';
 import CodeBlock from './CodeBlock';
 import { parseSvgSource, toIconName, toIconsJsSnippet } from '../lib/svgImport';
-import { SWATCHES } from '../app/constants';
+import { ICON_NAME_RULE, SWATCHES } from '../app/constants';
 
 const IMPORT_PREVIEW_SIZES = [16, 24, 32, 48];
-const NAME_RULE = /^[a-z0-9][a-z0-9-]*$/;
 
 /**
  * SVG 아이콘 추가 대화상자
@@ -46,7 +45,7 @@ export default function AddIconDialog({
     .filter(Boolean);
 
   const duplicate = !!name && existingNames.includes(name);
-  const badName = !!name && !NAME_RULE.test(name);
+  const badName = !!name && !ICON_NAME_RULE.test(name);
   const ready = parsed?.ok && name && !duplicate && !badName;
 
   const readFile = async (file) => {
@@ -56,13 +55,13 @@ export default function AddIconDialog({
   };
 
   const snippet = ready
-    ? toIconsJsSnippet(name, { category, tags, body: parsed.body })
+    ? toIconsJsSnippet(name, { category, tags, body: parsed.body, scale: parsed.scale })
     : '';
 
   const submit = (e) => {
     e.preventDefault();
     if (!ready) return;
-    onAdd(name, { category, tags, body: parsed.body, custom: true });
+    onAdd(name, { category, tags, body: parsed.body, scale: parsed.scale, custom: true });
     onClose();
   };
 
@@ -146,7 +145,7 @@ export default function AddIconDialog({
                       height={s}
                       fill="none"
                       stroke={previewColor}
-                      strokeWidth={previewStroke}
+                      strokeWidth={previewStroke / (parsed.scale || 1)}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       style={previewColor === 'currentColor' ? undefined : { color: previewColor }}

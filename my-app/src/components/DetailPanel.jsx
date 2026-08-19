@@ -4,6 +4,7 @@ import BgPicker from './BgPicker';
 import CategoryPicker from './CategoryPicker';
 import CodeBlock from './CodeBlock';
 import DeleteButton from './DeleteButton';
+import NameEditor from './NameEditor';
 import TagEditor from './TagEditor';
 import { lookupIcon } from '../data/customIcons';
 import { PREVIEW_SIZES } from '../app/constants';
@@ -28,6 +29,8 @@ export default function DetailPanel({
   permanent,
   onDelete,
   onRestore,
+  existingNames,
+  onRename,
 }) {
   const [rotate, setRotate] = useState(0);
   const [flip, setFlip] = useState(null);
@@ -64,7 +67,7 @@ export default function DetailPanel({
       <aside className="panel" role="dialog" aria-label={`${name} 아이콘 상세`}>
         <div className="panel-head">
           <Icon name={name} size={20} strokeWidth={strokeWidth} />
-          <span className="title">{name}</span>
+          <NameEditor name={name} existingNames={existingNames} onRename={onRename} />
           <span className="spacer" />
           <button className="icon-btn" onClick={onClose} aria-label="닫기">
             <Icon name="x" size={17} />

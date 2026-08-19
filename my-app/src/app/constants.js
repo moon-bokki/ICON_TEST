@@ -13,6 +13,9 @@ export const CAFE = 'cafe On';
 export const HIDDEN = '숨김';
 
 export const IMAGE_EXT = /\.(gif|png|apng|webp|svg|avif|jpe?g)$/i;
+
+/** 아이콘 이름 규칙 — 영문 소문자·숫자·하이픈 (JSX 와 icons.js 키로 쓰이므로) */
+export const ICON_NAME_RULE = /^[a-z0-9][a-z0-9-]*$/;
 export const SWATCHES = ['currentColor', '#4f46e5', '#0ea5e9', '#16a34a', '#f59e0b', '#dc2626'];
 export const PREVIEW_SIZES = [12, 16, 20, 24, 32, 48, 64];
 

@@ -14,11 +14,15 @@ import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
  * 최상위 const 가 평가되는 순서가 곧 이 순서이므로 의존성 순서를 지킬 것.
  * (src/data/animatedIcons.js 는 Vite 전용 import.meta.glob 이라 제외하고,
  *  아래에서 icon/ 폴더를 직접 훑어 ANIMATED_ICONS 를 주입한다.
- *  src/app/main.jsx 도 마지막 render 호출로 대신한다.)
+ *  src/app/main.jsx 도 마지막 render 호출로 대신한다.
+ *  src/lib/supabase.js 와 store/supabaseStore.js 는 import.meta.env 를 쓰고 번들에 담을
+ *  수 없으므로 제외한다 — store/index.js 가 typeof 로 확인해 localStorage 모드로 떨어진다.)
  */
 const BUNDLE = [
   'src/data/icons.js',
   'src/data/customIcons.js',
+  'src/data/store/localStore.js',
+  'src/data/store/index.js',
   'src/lib/clipboard.js',
   'src/lib/stage.js',
   'src/lib/category.js',
@@ -29,6 +33,7 @@ const BUNDLE = [
   'src/components/Icon.jsx',
   'src/components/CodeBlock.jsx',
   'src/components/DeleteButton.jsx',
+  'src/components/NameEditor.jsx',
   'src/components/BgPicker.jsx',
   'src/components/CategoryPicker.jsx',
   'src/components/AddIconDialog.jsx',

@@ -5,6 +5,7 @@ import CategoryPicker from './CategoryPicker';
 import CodeBlock from './CodeBlock';
 import DeleteButton from './DeleteButton';
 import ExportBox from './ExportBox';
+import NameEditor from './NameEditor';
 import TagEditor from './TagEditor';
 import { CAFE } from '../app/constants';
 import { SIZE_LADDER, formatBytes, useAsset } from '../lib/assetUtils';
@@ -28,6 +29,8 @@ export default function AssetPanel({
   hidden,
   onDelete,
   onRestore,
+  existingNames,
+  onRename,
 }) {
   const [{ status, url, meta, bytes }, restart] = useAsset(item.url, item.blob);
   const [bg, setBg] = useState('checker');
@@ -50,7 +53,7 @@ export default function AssetPanel({
       <aside className="panel" role="dialog" aria-label={`${item.file} 상세`}>
         <div className="panel-head">
           <img src={url} alt="" width={20} height={20} style={{ objectFit: 'contain' }} />
-          <span className="title">{item.file}</span>
+          <NameEditor name={item.name} existingNames={existingNames} onRename={onRename} freeform />
           <span className="spacer" />
           <button className="icon-btn" onClick={onClose} aria-label="닫기">
             <Icon name="x" size={17} />
@@ -84,6 +87,10 @@ export default function AssetPanel({
           </div>
 
           <dl className="meta">
+            <dt>파일</dt>
+            <dd>
+              <code>{item.file}</code>
+            </dd>
             <dt>원본</dt>
             <dd>{natural ? `${natural.w} × ${natural.h}px` : '…'}</dd>
             <dt>용량</dt>

@@ -357,6 +357,19 @@ input { font: inherit; }
 .import-preview figure { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0; }
 .import-preview figcaption { font-family: var(--mono); font-size: 10.5px; color: var(--text-faint); }
 .import-meta { margin-left: auto; font-size: 11.5px; color: var(--text-faint); }
+/* ── 이름 수정 ───────────────────────────── */
+.name-editor { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+.name-editor input {
+  flex: 1; min-width: 90px; height: 30px; padding: 0 9px;
+  border: 1px solid var(--accent); border-radius: 8px;
+  background: var(--surface); color: var(--text); outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  font-family: var(--mono); font-size: 14px;
+}
+.name-editor input[aria-invalid='true'] { border-color: var(--danger); box-shadow: none; }
+.name-editor .icon-btn[disabled] { opacity: 0.4; cursor: default; }
+.name-error { flex-basis: 100%; font-size: 11px; color: var(--danger); }
+
 .preview-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
 .preview-controls .control,
 .preview-controls .swatches { height: 34px; }

@@ -95,7 +95,9 @@ export function parseSvgSource(input) {
   if (scale !== 1) transform.push(`scale(${scale})`);
   if (minX || minY) transform.push(`translate(${round(-minX)} ${round(-minY)})`);
   if (scale !== 1) {
-    warnings.push(`원본이 ${round(w)}×${round(h)} 라 ${scale}배로 맞췄습니다.`);
+    warnings.push(
+      `원본이 ${round(w)}×${round(h)} 라 ${scale}배로 맞췄습니다. (선 두께는 자동 보정됩니다)`
+    );
   }
   if (Math.abs(w - h) > 0.01) {
     warnings.push('가로세로 비율이 정사각형이 아닙니다. 위치가 치우쳐 보일 수 있습니다.');
@@ -133,16 +135,18 @@ export function parseSvgSource(input) {
   if (mode === 'fill') body = `<g fill="currentColor" stroke="none">${body}</g>`;
   if (transform.length) body = `<g transform="${transform.join(' ')}">${body}</g>`;
 
-  return { body, mode, size: `${round(w)}×${round(h)}`, warnings };
+  // scale 은 Icon 이 선 두께를 되돌리는 데 쓴다 (scale() 은 두께까지 줄이므로)
+  return { body, mode, scale, size: `${round(w)}×${round(h)}`, warnings };
 }
 
 /** icons.js 에 그대로 붙여넣을 수 있는 코드 조각 */
-export function toIconsJsSnippet(name, { category, tags = [], body }) {
+export function toIconsJsSnippet(name, { category, tags = [], body, scale }) {
   const tagList = tags.map((t) => `'${t.replace(/'/g, "\\'")}'`).join(', ');
   return (
     `  '${name}': {\n` +
     `    category: '${category}',\n` +
     `    tags: [${tagList}],\n` +
+    (scale && scale !== 1 ? `    scale: ${scale}, // 선 두께 보정\n` : '') +
     `    body: '${body.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}',\n` +
     `  },`
   );

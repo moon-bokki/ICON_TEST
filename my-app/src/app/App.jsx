@@ -14,6 +14,7 @@ import { assetCategory, assetKey, iconCategory } from '../lib/category';
 import { copyText } from '../lib/clipboard';
 import { ALL_NAMES, CAFE, CATEGORIES, DEFAULTS, HIDDEN, IMAGE_EXT } from './constants';
 import {
+  useAssetLabels,
   useCustomCategories,
   useCustomIcons,
   useCustomTags,
@@ -29,10 +30,12 @@ import {
 export default function App() {
   const [theme, toggleTheme] = useTheme();
   const [toast, showToast] = useToast();
-  const { customTags, addTags, removeTag } = useCustomTags(showToast);
-  const { customCategories, moveCategory, resetCategory } = useCustomCategories(showToast);
+  const { customTags, addTags, removeTag, dropTags } = useCustomTags(showToast);
+  const { customCategories, moveCategory, resetCategory, dropCategory } =
+    useCustomCategories(showToast);
   const { customIcons, addIcon, removeIcon } = useCustomIcons(showToast);
   const { hidden, hide, restore, restoreAll } = useHiddenIcons(showToast);
+  const { labels, setLabel } = useAssetLabels(showToast);
 
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('전체');
@@ -80,6 +83,42 @@ export default function App() {
     [showToast]
   );
 
+  /**
+   * 아이콘 이름 바꾸기
+   *
+   * 이름은 곧 아이콘을 찾는 키라서, 새 이름으로 등록한 뒤 옛 이름을 정리하는 방식으로 처리한다.
+   * - 화면에서 추가한 아이콘 : 옛 항목을 지운다
+   * - 기본 아이콘           : icons.js 는 고칠 수 없으므로 원본을 숨기고 새 이름으로 등록한다
+   *                          (숨김에서 언제든 원래 아이콘을 되살릴 수 있다)
+   * 붙여 둔 태그와 옮겨 둔 분류도 새 이름으로 따라간다.
+   */
+  const renameIcon = useCallback(
+    (oldName, newName) => {
+      const def = lookupIcon(oldName);
+      if (!def || oldName === newName) return;
+
+      const wasCustom = !!customIcons[oldName];
+      const tags = [...new Set([...(def.tags || []), ...(customTags[oldName] || [])])];
+
+      const category = iconCategory(oldName, customCategories);
+
+      // 옛 이름 정리를 먼저 — 알림이 이름 변경 메시지로 끝나도록
+      dropTags(oldName);
+      dropCategory(oldName);
+      if (wasCustom) removeIcon(oldName);
+      else hide(oldName, oldName);
+
+      addIcon(
+        newName,
+        { category, tags, body: def.body, scale: def.scale, custom: true },
+        `이름을 ‘${newName}’ 로 바꿨습니다`
+      );
+
+      setSelected({ type: 'icon', name: newName });
+    },
+    [customIcons, customTags, customCategories, addIcon, removeIcon, hide, dropTags, dropCategory]
+  );
+
   const resetControls = useCallback(() => {
     setSize(DEFAULTS.size);
     setStrokeWidth(DEFAULTS.strokeWidth);
@@ -88,7 +127,23 @@ export default function App() {
   }, []);
 
   /* ── cafe On : 사용자 이미지 아이콘 ───────── */
-  const assets = useMemo(() => [...ANIMATED_ICONS, ...extraAssets], [extraAssets]);
+  /** 바꾼 라벨을 입혀 둔다 — 목록·검색·코드 조각·내보내기 파일명이 모두 이 이름을 쓴다 */
+  const assets = useMemo(() => {
+    const all = [...ANIMATED_ICONS, ...extraAssets];
+    return all.map((a) => {
+      const label = labels[assetKey(a)];
+      return label ? { ...a, name: label } : a;
+    });
+  }, [extraAssets, labels]);
+
+  /** 라벨을 바꾸면 객체가 새로 만들어지므로, 열려 있는 패널은 최신 것을 다시 찾아 쓴다 */
+  const selectedAsset = useMemo(
+    () =>
+      selected?.type === 'asset'
+        ? assets.find((a) => a.url === selected.item.url) || selected.item
+        : null,
+    [selected, assets]
+  );
 
   const addFiles = useCallback(
     (fileList) => {
@@ -112,10 +167,11 @@ export default function App() {
     [showToast]
   );
 
+  /* url 은 에셋마다 고유하다 — 라벨을 바꾸면 객체가 새로 생기므로 참조 대신 url 로 비교한다 */
   const removeAsset = useCallback((item) => {
-    setExtraAssets((prev) => prev.filter((x) => x !== item));
+    setExtraAssets((prev) => prev.filter((x) => x.url !== item.url));
     if (item.url?.startsWith('blob:')) URL.revokeObjectURL(item.url);
-    setSelected((s) => (s?.type === 'asset' && s.item === item ? null : s));
+    setSelected((s) => (s?.type === 'asset' && s.item.url === item.url ? null : s));
   }, []);
 
   /* 페이지 어디에 놓아도 파일이 추가되도록 */
@@ -330,33 +386,39 @@ export default function App() {
             restore(selected.name, selected.name);
             setSelected(null);
           }}
+          existingNames={allNames}
+          onRename={(next) => renameIcon(selected.name, next)}
         />
       )}
       {selected?.type === 'asset' && (
         <AssetPanel
-          item={selected.item}
+          item={selectedAsset}
           size={size}
           strokeWidth={strokeWidth}
-          category={assetCategory(selected.item, customCategories, CAFE)}
+          category={assetCategory(selectedAsset, customCategories, CAFE)}
           categories={pickerCategories}
-          onMoveCategory={(c) => moveCategory(assetKey(selected.item), c, CAFE)}
-          onResetCategory={() => resetCategory(assetKey(selected.item), CAFE)}
-          customTags={customTags[assetKey(selected.item)] || []}
-          onAddTags={(raw) => addTags(assetKey(selected.item), raw)}
-          onRemoveTag={(tag) => removeTag(assetKey(selected.item), tag)}
+          onMoveCategory={(c) => moveCategory(assetKey(selectedAsset), c, CAFE)}
+          onResetCategory={() => resetCategory(assetKey(selectedAsset), CAFE)}
+          customTags={customTags[assetKey(selectedAsset)] || []}
+          onAddTags={(raw) => addTags(assetKey(selectedAsset), raw)}
+          onRemoveTag={(tag) => removeTag(assetKey(selectedAsset), tag)}
           onClose={() => setSelected(null)}
           onCopy={copy}
           onToast={showToast}
-          hidden={!!hidden[assetKey(selected.item)]}
+          hidden={!!hidden[assetKey(selectedAsset)]}
           onDelete={() => {
-            if (selected.item.dropped) removeAsset(selected.item);
-            else hide(assetKey(selected.item), selected.item.file);
+            if (selectedAsset.dropped) removeAsset(selectedAsset);
+            else hide(assetKey(selectedAsset), selectedAsset.file);
             setSelected(null);
           }}
           onRestore={() => {
-            restore(assetKey(selected.item), selected.item.file);
+            restore(assetKey(selectedAsset), selectedAsset.file);
             setSelected(null);
           }}
+          existingNames={assets.filter((a) => a.url !== selectedAsset.url).map((a) => a.name)}
+          onRename={(next) =>
+            setLabel(assetKey(selectedAsset), next, selectedAsset.file.replace(/\.[^.]+$/, ''))
+          }
         />
       )}
 
