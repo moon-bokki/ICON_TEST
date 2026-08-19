@@ -44,7 +44,7 @@ export default function App() {
   const { customIcons, addIcon, removeIcon } = useCustomIcons(showToast);
   const { hidden, hide, restore, restoreAll, hideCategory, restoreCategories } =
     useHiddenIcons(showToast);
-  const { labels, setLabel } = useAssetLabels(showToast);
+  const { labels, setLabel, dropLabel } = useAssetLabels(showToast);
 
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('전체');
@@ -126,6 +126,20 @@ export default function App() {
       setSelected({ type: 'icon', name: newName });
     },
     [customIcons, customTags, customCategories, addIcon, removeIcon, hide, dropTags, dropCategory]
+  );
+
+  /**
+   * 아이콘을 완전히 지울 때 딸린 기록도 함께 치운다.
+   * 남겨 두면 저장소에 쓸모없는 행이 쌓이고, 나중에 같은 이름으로 아이콘을
+   * 추가했을 때 옛 태그·분류를 물려받는다.
+   */
+  const forgetIconData = useCallback(
+    (key) => {
+      dropTags(key);
+      dropCategory(key);
+      dropLabel(key);
+    },
+    [dropTags, dropCategory, dropLabel]
   );
 
   const resetControls = useCallback(() => {
@@ -409,8 +423,10 @@ export default function App() {
           hidden={!!hidden[selected.name]}
           permanent={!!customIcons[selected.name]}
           onDelete={() => {
-            if (customIcons[selected.name]) removeIcon(selected.name);
-            else hide(selected.name, selected.name);
+            if (customIcons[selected.name]) {
+              removeIcon(selected.name);
+              forgetIconData(selected.name);
+            } else hide(selected.name, selected.name);
             setSelected(null);
           }}
           onRestore={() => {
@@ -438,8 +454,10 @@ export default function App() {
           onToast={showToast}
           hidden={!!hidden[assetKey(selectedAsset)]}
           onDelete={() => {
-            if (selectedAsset.dropped) removeAsset(selectedAsset);
-            else hide(assetKey(selectedAsset), selectedAsset.file);
+            if (selectedAsset.dropped) {
+              removeAsset(selectedAsset);
+              forgetIconData(assetKey(selectedAsset));
+            } else hide(assetKey(selectedAsset), selectedAsset.file);
             setSelected(null);
           }}
           onRestore={() => {

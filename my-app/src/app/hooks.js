@@ -165,7 +165,10 @@ export function useAssetLabels(showToast) {
     [showToast]
   );
 
-  return { labels, setLabel };
+  /** 아이콘을 완전히 지운 뒤 남은 라벨을 치운다 */
+  const dropLabel = useCallback((key) => setLabels((prev) => withoutKey(prev, key)), []);
+
+  return { labels, setLabel, dropLabel };
 }
 
 /**
