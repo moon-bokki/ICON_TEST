@@ -1,0 +1,68 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+<style>
+@keyframes kf_Group_4_transform_0 {
+  0% {
+    animation-timing-function: ease-out;
+    transform: translateX(22px) translateY(22px) translateX(0px) translateY(25px);
+  }
+  82.27% {
+    transform: translateX(22px) translateY(22px) translateX(0px) translateY(0px);
+  }
+  100% {
+    transform: translateX(22px) translateY(22px) translateX(0px) translateY(0px);
+  }
+}
+#Group_4 {
+  transform-origin: 0 0;
+  animation: kf_Group_4_transform_0 1.223186s linear infinite;
+}
+@keyframes kf_Group_6_transform_0 {
+  0% {
+    transform: translateX(12px) translateY(13px) translate(30px, 28px) scaleX(0.5) scaleY(0.5) translate(-30px, -28px);
+  }
+  24.23% {
+    animation-timing-function: ease-out;
+    transform: translateX(12px) translateY(13px) translate(30px, 28px) scaleX(0.5) scaleY(0.5) translate(-30px, -28px);
+  }
+  82.27% {
+    transform: translateX(12px) translateY(13px) translate(30px, 28px) scaleX(1) scaleY(1) translate(-30px, -28px);
+  }
+  100% {
+    transform: translateX(12px) translateY(13px) translate(30px, 28px) scaleX(1) scaleY(1) translate(-30px, -28px);
+  }
+}
+@keyframes kf_Group_6_opacity_0 {
+  0% {
+    animation-timing-function: ease-out;
+    opacity: 0.5;
+  }
+  82.27% {
+    animation-timing-function: linear;
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+#Group_6 {
+  transform-origin: 0 0;
+  animation:
+    kf_Group_6_transform_0 1.223186s linear infinite,
+    kf_Group_6_opacity_0 1.223186s linear infinite;
+}
+</style>
+<g id="my-ani" clip-path="url(#clip0_70_772)">
+<g id="Group_4" transform="translate(22 22)">
+<g id="Group_6" transform="translate(12 13)">
+<path id="Vector" transform="translate(0 38)" d="M0 18V16.5C0 12.1239 2.31785 7.92709 6.44365 4.83274C10.5695 1.73839 16.1652 0 22 0H38C43.8348 0 49.4306 1.73839 53.5564 4.83274C57.6822 7.92709 60 12.1239 60 16.5V18" stroke="#34B7CB" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<circle id="Ellipse_4" transform="translate(15)" cx="15" cy="15" r="15" stroke="#35B7CB" stroke-width="7"/>
+</g>
+<circle id="Ellipse_8" cx="42" cy="42" r="42" stroke="black" stroke-width="7"/>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_70_772">
+<rect width="128" height="128" fill="white"/>
+</clipPath>
+</defs>
+</svg>
