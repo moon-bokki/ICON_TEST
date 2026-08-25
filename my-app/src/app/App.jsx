@@ -420,6 +420,7 @@ export default function App() {
           onRemoveTag={(tag) => removeTag(selected.name, tag)}
           onClose={() => setSelected(null)}
           onCopy={copy}
+          onToast={showToast}
           hidden={!!hidden[selected.name]}
           permanent={!!customIcons[selected.name]}
           onDelete={() => {

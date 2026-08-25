@@ -114,7 +114,13 @@ function parseGif(buffer) {
    file:// 로 열었을 때는 fetch 가 막히므로 <img> 직접 로드로 폴백.
    ══════════════════════════════════════════ */
 export function useAsset(src, initialBlob) {
-  const [state, setState] = useState({ status: 'loading', url: src, meta: null, bytes: null });
+  const [state, setState] = useState({
+    status: 'loading',
+    url: src,
+    meta: null,
+    bytes: null,
+    blob: null,
+  });
   const blobRef = useRef(initialBlob || null);
   const urlRef = useRef(null);
 
@@ -133,6 +139,7 @@ export function useAsset(src, initialBlob) {
           url,
           bytes: blobRef.current.size,
           meta: parseGif(buf),
+          blob: blobRef.current,
         });
         return;
       }
@@ -146,10 +153,10 @@ export function useAsset(src, initialBlob) {
         blobRef.current = blob;
         const url = URL.createObjectURL(blob);
         urlRef.current = url;
-        setState({ status: 'ok', url, bytes: buf.byteLength, meta: parseGif(buf) });
+        setState({ status: 'ok', url, bytes: buf.byteLength, meta: parseGif(buf), blob });
       } catch {
         // file:// 등 — 이미지 자체는 표시되지만 메타데이터는 못 읽는다
-        if (alive) setState({ status: 'limited', url: src, meta: null, bytes: null });
+        if (alive) setState({ status: 'limited', url: src, meta: null, bytes: null, blob: null });
       }
     }
 

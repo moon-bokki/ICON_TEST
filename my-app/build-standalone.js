@@ -33,6 +33,7 @@ const BUNDLE = [
   'src/components/Icon.jsx',
   'src/components/CodeBlock.jsx',
   'src/components/DeleteButton.jsx',
+  'src/components/DownloadBox.jsx',
   'src/components/NameEditor.jsx',
   'src/components/BgPicker.jsx',
   'src/components/CategoryPicker.jsx',

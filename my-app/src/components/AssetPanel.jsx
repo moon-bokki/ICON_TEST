@@ -8,7 +8,7 @@ import ExportBox from './ExportBox';
 import NameEditor from './NameEditor';
 import TagEditor from './TagEditor';
 import { CAFE } from '../app/constants';
-import { SIZE_LADDER, formatBytes, useAsset } from '../lib/assetUtils';
+import { SIZE_LADDER, downloadBlob, formatBytes, useAsset } from '../lib/assetUtils';
 import { stageProps } from '../lib/stage';
 
 /** cafe On 이미지 아이콘 상세 패널 */
@@ -32,7 +32,7 @@ export default function AssetPanel({
   existingNames,
   onRename,
 }) {
-  const [{ status, url, meta, bytes }, restart] = useAsset(item.url, item.blob);
+  const [{ status, url, meta, bytes, blob }, restart] = useAsset(item.url, item.blob);
   const [bg, setBg] = useState('checker');
   const [customBg, setCustomBg] = useState('#4f46e5');
   const [natural, setNatural] = useState(null);
@@ -77,6 +77,27 @@ export default function AssetPanel({
           <div className="demo-row" style={{ marginTop: 10 }}>
             <button className="demo-btn sm" onClick={restart}>
               <Icon name="play" size={13} strokeWidth={strokeWidth} /> 처음부터
+            </button>
+            <button
+              className="demo-btn sm"
+              onClick={() => {
+                if (blob) {
+                  downloadBlob(blob, item.file);
+                  onToast(`${item.file} 저장됨 · ${formatBytes(blob.size)}`);
+                } else {
+                  // fetch 가 막힌 환경(file:// 등) — 링크로 대신 내려받는다
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = item.file;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  onToast(`${item.file} 저장 시도`);
+                }
+              }}
+              title="변환하지 않은 원본 파일을 그대로 저장합니다"
+            >
+              <Icon name="download" size={13} strokeWidth={strokeWidth} /> 원본 파일
             </button>
             <DeleteButton
               hidden={hidden}

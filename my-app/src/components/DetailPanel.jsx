@@ -4,6 +4,7 @@ import BgPicker from './BgPicker';
 import CategoryPicker from './CategoryPicker';
 import CodeBlock from './CodeBlock';
 import DeleteButton from './DeleteButton';
+import DownloadBox from './DownloadBox';
 import NameEditor from './NameEditor';
 import TagEditor from './TagEditor';
 import { lookupIcon } from '../data/customIcons';
@@ -25,6 +26,7 @@ export default function DetailPanel({
   onRemoveTag,
   onClose,
   onCopy,
+  onToast,
   hidden,
   permanent,
   onDelete,
@@ -174,6 +176,9 @@ export default function DetailPanel({
 
           <div className="section-label">SVG</div>
           <CodeBlock code={svg} onCopy={() => onCopy(svg, 'SVG')} />
+
+          <div className="section-label">파일 내려받기</div>
+          <DownloadBox name={name} svg={svg} size={size} color={color} onToast={onToast} />
         </div>
       </aside>
     </>

@@ -916,7 +916,13 @@
        file:// 로 열었을 때는 fetch 가 막히므로 <img> 직접 로드로 폴백.
        ══════════════════════════════════════════ */
     function useAsset(src, initialBlob) {
-      const [state, setState] = useState({ status: 'loading', url: src, meta: null, bytes: null });
+      const [state, setState] = useState({
+        status: 'loading',
+        url: src,
+        meta: null,
+        bytes: null,
+        blob: null,
+      });
       const blobRef = useRef(initialBlob || null);
       const urlRef = useRef(null);
 
@@ -935,6 +941,7 @@
               url,
               bytes: blobRef.current.size,
               meta: parseGif(buf),
+              blob: blobRef.current,
             });
             return;
           }
@@ -948,10 +955,10 @@
             blobRef.current = blob;
             const url = URL.createObjectURL(blob);
             urlRef.current = url;
-            setState({ status: 'ok', url, bytes: buf.byteLength, meta: parseGif(buf) });
+            setState({ status: 'ok', url, bytes: buf.byteLength, meta: parseGif(buf), blob });
           } catch {
             // file:// 등 — 이미지 자체는 표시되지만 메타데이터는 못 읽는다
-            if (alive) setState({ status: 'limited', url: src, meta: null, bytes: null });
+            if (alive) setState({ status: 'limited', url: src, meta: null, bytes: null, blob: null });
           }
         }
 
@@ -1577,6 +1584,111 @@
           <Icon name="trash" size={14} />
           삭제
         </button>
+      );
+    }
+
+    /* ───── src/components/DownloadBox.jsx ───── */
+    const DOWNLOAD_SCALES = [1, 2, 3];
+
+    /**
+     * 라인 아이콘 파일 내려받기 (상세 패널)
+     *
+     * SVG : 벡터라 크기와 무관하다. 툴바에서 고른 두께·색이 그대로 담긴다.
+     * PNG : 고른 픽셀 크기로 실제 래스터 이미지를 만들어 저장한다.
+     */
+    function DownloadBox({ name, svg, size, color, onToast }) {
+      const [px, setPx] = useState(Math.max(8, Math.round(size)));
+      const [scale, setScale] = useState(1);
+      const [busy, setBusy] = useState(false);
+      const [error, setError] = useState('');
+
+      const outPx = Math.min(1024, Math.max(8, Math.round(px * scale)));
+
+      const saveSvg = () => {
+        const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+        downloadBlob(blob, `${name}.svg`);
+        onToast(`${name}.svg 저장됨 · ${formatBytes(blob.size)}`);
+      };
+
+      const savePng = async () => {
+        setBusy(true);
+        setError('');
+        let url = null;
+        try {
+          // PNG 는 색을 상속할 수 없으므로 currentColor 를 지금 화면의 글자색으로 바꿔 굽는다
+          const solid =
+            color === 'currentColor'
+              ? getComputedStyle(document.documentElement).getPropertyValue('--text').trim() ||
+                '#16191f'
+              : color;
+          const source = svg.replace(/currentColor/g, solid);
+
+          url = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));
+          const blob = await renderAtSize(url, outPx, 'image/png');
+          const filename = `${name}-${px}${scale > 1 ? `@${scale}x` : ''}.png`;
+          downloadBlob(blob, filename);
+          onToast(`${filename} 저장됨 · ${formatBytes(blob.size)}`);
+        } catch (e) {
+          setError(e.message);
+        } finally {
+          if (url) URL.revokeObjectURL(url);
+          setBusy(false);
+        }
+      };
+
+      return (
+        <div className="export-box">
+          <div className="export-row">
+            <label htmlFor="download-px">크기</label>
+            <input
+              id="download-px"
+              type="number"
+              min="8"
+              max="512"
+              value={px}
+              onChange={(e) => setPx(Math.max(1, Number(e.target.value) || 1))}
+            />
+            <span className="unit">px</span>
+            <div className="seg sm">
+              {DOWNLOAD_SCALES.map((s) => (
+                <button
+                  key={s}
+                  className="seg-btn"
+                  aria-pressed={scale === s}
+                  onClick={() => setScale(s)}
+                >
+                  @{s}x
+                </button>
+              ))}
+            </div>
+            <span className="export-out">
+              → {outPx} × {outPx}px
+            </span>
+          </div>
+
+          <div className="demo-row">
+            <button className="demo-btn sm" onClick={saveSvg}>
+              <Icon name="download" size={13} />
+              SVG 내려받기
+            </button>
+            <button className="demo-btn sm" onClick={savePng} disabled={busy}>
+              <Icon name="download" size={13} />
+              {busy ? '만드는 중…' : 'PNG 내려받기'}
+            </button>
+          </div>
+
+          {error && (
+            <p className="hint import-error">
+              <Icon name="alert-triangle" size={13} /> {error}
+            </p>
+          )}
+
+          <p className="hint">
+            SVG 는 벡터라 크기 설정과 무관하며 위 <b>크기·두께·색상</b> 설정이 그대로 담깁니다.
+            색이 <code>currentColor</code> 면 쓰는 곳의 글자색을 따라가고, PNG 로 구울 때는 지금
+            화면의 글자색으로 고정됩니다.
+          </p>
+        </div>
       );
     }
 
@@ -2665,6 +2777,7 @@
       onRemoveTag,
       onClose,
       onCopy,
+      onToast,
       hidden,
       permanent,
       onDelete,
@@ -2814,6 +2927,9 @@
 
               <div className="section-label">SVG</div>
               <CodeBlock code={svg} onCopy={() => onCopy(svg, 'SVG')} />
+
+              <div className="section-label">파일 내려받기</div>
+              <DownloadBox name={name} svg={svg} size={size} color={color} onToast={onToast} />
             </div>
           </aside>
         </>
@@ -2842,7 +2958,7 @@
       existingNames,
       onRename,
     }) {
-      const [{ status, url, meta, bytes }, restart] = useAsset(item.url, item.blob);
+      const [{ status, url, meta, bytes, blob }, restart] = useAsset(item.url, item.blob);
       const [bg, setBg] = useState('checker');
       const [customBg, setCustomBg] = useState('#4f46e5');
       const [natural, setNatural] = useState(null);
@@ -2887,6 +3003,27 @@
               <div className="demo-row" style={{ marginTop: 10 }}>
                 <button className="demo-btn sm" onClick={restart}>
                   <Icon name="play" size={13} strokeWidth={strokeWidth} /> 처음부터
+                </button>
+                <button
+                  className="demo-btn sm"
+                  onClick={() => {
+                    if (blob) {
+                      downloadBlob(blob, item.file);
+                      onToast(`${item.file} 저장됨 · ${formatBytes(blob.size)}`);
+                    } else {
+                      // fetch 가 막힌 환경(file:// 등) — 링크로 대신 내려받는다
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = item.file;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      onToast(`${item.file} 저장 시도`);
+                    }
+                  }}
+                  title="변환하지 않은 원본 파일을 그대로 저장합니다"
+                >
+                  <Icon name="download" size={13} strokeWidth={strokeWidth} /> 원본 파일
                 </button>
                 <DeleteButton
                   hidden={hidden}
@@ -3361,6 +3498,7 @@
               onRemoveTag={(tag) => removeTag(selected.name, tag)}
               onClose={() => setSelected(null)}
               onCopy={copy}
+              onToast={showToast}
               hidden={!!hidden[selected.name]}
               permanent={!!customIcons[selected.name]}
               onDelete={() => {
