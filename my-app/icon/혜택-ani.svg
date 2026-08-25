@@ -1,0 +1,86 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+<style>
+@keyframes kf_Group_10_transform_0 {
+  0% {
+    transform: translateX(53.735px) translateY(48.927px) translate(16.566px, 17.437px) scaleX(0) scaleY(0) translate(-16.566px, -17.437px);
+  }
+  33.12% {
+    animation-timing-function: ease-out;
+    transform: translateX(53.735px) translateY(48.927px) translate(16.566px, 17.437px) scaleX(0) scaleY(0) translate(-16.566px, -17.437px);
+  }
+  87.59% {
+    transform: translateX(53.735px) translateY(48.927px) translate(16.566px, 17.437px) scaleX(1) scaleY(1) translate(-16.566px, -17.437px);
+  }
+  100% {
+    transform: translateX(53.735px) translateY(48.927px) translate(16.566px, 17.437px) scaleX(1) scaleY(1) translate(-16.566px, -17.437px);
+  }
+}
+@keyframes kf_Group_10_opacity_0 {
+  0% {
+    animation-timing-function: linear;
+    opacity: 0;
+  }
+  33.12% {
+    animation-timing-function: ease-out;
+    opacity: 0;
+  }
+  87.55% {
+    animation-timing-function: linear;
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+#Group_10 {
+  transform-origin: 0 0;
+  animation:
+    kf_Group_10_transform_0 2.293333s linear infinite,
+    kf_Group_10_opacity_0 2.293333s linear infinite;
+}
+@keyframes kf_Group_11_transform_0 {
+  0% {
+    animation-timing-function: cubic-bezier(0.5, 0, 0.5, 1);
+    transform: translateX(17px) translateY(35px) translate(46.5px, 32.55px) rotate(0rad) translate(-46.5px, -32.55px);
+  }
+  26.64% {
+    animation-timing-function: cubic-bezier(0.5, 0, 0.5, 1);
+    transform: translateX(17px) translateY(35px) translate(46.5px, 32.55px) rotate(-0.436rad) translate(-46.5px, -32.55px);
+  }
+  53.46% {
+    transform: translateX(17px) translateY(35px) translate(46.5px, 32.55px) rotate(0.436rad) translate(-46.5px, -32.55px);
+  }
+  75.26% {
+    transform: translateX(17px) translateY(35px) translate(46.5px, 32.55px) rotate(0.002rad) translate(-46.5px, -32.55px);
+  }
+  76.69% {
+    transform: translateX(17px) translateY(35px) translate(46.5px, 32.55px) rotate(0rad) translate(-46.5px, -32.55px);
+  }
+  100% {
+    transform: translateX(17px) translateY(35px) translate(46.5px, 32.55px) rotate(0rad) translate(-46.5px, -32.55px);
+  }
+}
+#Group_11 {
+  transform-origin: 0 0;
+  animation: kf_Group_11_transform_0 2.293333s linear infinite;
+}
+</style>
+<g id="______-ani" clip-path="url(#clip0_83_112)">
+<g id="Group_10" opacity="0" transform="translate(53.7351 48.9267)">
+<path id="Vector" transform="translate(2.78988 0.0232786)" d="M27.9 0L0 32.55" stroke="#00A2BB" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_2" d="M4.79531 9.59062C7.44369 9.59062 9.59062 7.44369 9.59062 4.79531C9.59062 2.14693 7.44369 0 4.79531 0C2.14693 0 0 2.14693 0 4.79531C0 7.44369 2.14693 9.59062 4.79531 9.59062Z" stroke="#00A2BB" stroke-width="7"/>
+<path id="Vector_3" transform="translate(23.5406 25.2844)" d="M4.79531 9.59062C7.44369 9.59062 9.59062 7.44369 9.59062 4.79531C9.59062 2.14693 7.44369 0 4.79531 0C2.14693 0 0 2.14693 0 4.79531C0 7.44369 2.14693 9.59062 4.79531 9.59062Z" stroke="#00A2BB" stroke-width="7"/>
+</g>
+<g id="Group_11" transform="translate(17 35)">
+<path id="Vector_4" transform="translate(22.134 5.85616e-06)" d="M0 0V11.8575" stroke="#040000" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_5" transform="translate(22.134 29.574)" d="M0 0V5.9055" stroke="#040000" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_6" transform="translate(22.134 53.2425)" d="M0 0V11.8575" stroke="#040000" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_7" d="M86.955 34.875C83.8395 34.875 81.3285 32.364 81.3285 29.2485V28.737C81.3285 25.6215 83.8395 23.1105 86.955 23.1105H93V9.3C93 4.185 88.815 0 83.7 0H9.3C4.185 0 0 4.185 0 9.3V25.4355H5.394C8.5095 25.4355 11.0205 27.9465 11.0205 31.062V31.5735C11.0205 34.689 8.5095 37.2 5.394 37.2H0V55.7535C0 60.8685 4.185 65.0535 9.3 65.0535H83.7C88.815 65.0535 93 60.8685 93 55.7535V34.875H86.955Z" stroke="#040000" stroke-width="7"/>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_83_112">
+<rect width="128" height="128" fill="white"/>
+</clipPath>
+</defs>
+</svg>
