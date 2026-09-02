@@ -306,11 +306,27 @@ export function useCustomCategories(showToast) {
     [showToast]
   );
 
+  /**
+   * 소속 아이콘이 없는 빈 분류 만들기.
+   * 분류는 원래 "아이콘이 가리키는 값"이라 아이콘이 0개면 존재할 수 없다.
+   * 그래서 "#분류명" 키로 만들어 둔 사실 자체를 기록한다 — 아이콘 이름은 영문
+   * 소문자·숫자·하이픈, 이미지 아이콘은 "@파일명" 이라 절대 겹치지 않는다.
+   */
+  const createCategory = useCallback(
+    (name) => {
+      const label = String(name).trim();
+      if (!label) return;
+      setCustomCategories((prev) => ({ ...prev, [categoryKey(label)]: label }));
+      showToast(`‘${label}’ 분류를 만들었습니다`);
+    },
+    [showToast]
+  );
+
   /** 이름을 바꾼 뒤 남은 옛 키를 정리한다 */
   const dropCategory = useCallback(
     (key) => setCustomCategories((prev) => withoutKey(prev, key)),
     []
   );
 
-  return { customCategories, moveCategory, resetCategory, dropCategory };
+  return { customCategories, moveCategory, resetCategory, dropCategory, createCategory };
 }

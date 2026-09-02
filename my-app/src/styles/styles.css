@@ -540,3 +540,16 @@ code { font-family: var(--mono); font-size: 0.92em; background: var(--surface-2)
 .chip-wrap:hover .chip-del,
 .chip-wrap:focus-within .chip-del { opacity: 1; }
 .chip-del:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+/* ── 분류 추가 (툴바 인라인 입력) ────────── */
+.chip-form { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.chip-form input {
+  height: 30px; width: 132px; padding: 0 11px;
+  border: 1px solid var(--accent); border-radius: 999px;
+  background: var(--surface); color: var(--text); outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  font-size: 12.5px;
+}
+.chip-form input[aria-invalid='true'] { border-color: var(--danger); box-shadow: none; }
+.chip-form .chip[disabled] { opacity: 0.45; cursor: default; }
+.chip-form-error { font-size: 11px; color: var(--danger); }

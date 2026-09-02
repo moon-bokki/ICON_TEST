@@ -39,7 +39,7 @@ export default function App() {
   const [theme, toggleTheme] = useTheme();
   const [toast, showToast] = useToast();
   const { customTags, addTags, removeTag, dropTags } = useCustomTags(showToast);
-  const { customCategories, moveCategory, resetCategory, dropCategory } =
+  const { customCategories, moveCategory, resetCategory, dropCategory, createCategory } =
     useCustomCategories(showToast);
   const { customIcons, addIcon, removeIcon } = useCustomIcons(showToast);
   const { hidden, hide, restore, restoreAll, hideCategory, restoreCategories } =
@@ -299,12 +299,22 @@ export default function App() {
    * 소속된 아이콘이 하나도 없는 분류는 빼서 빈 칩이 남지 않게 한다
    * (마지막 아이콘을 다른 곳으로 옮기면 그 분류는 자동으로 사라진다)
    */
+  /** 툴바에서 직접 만든 분류 — 소속 아이콘이 없어도 칩으로 남는다 */
+  const createdCategories = useMemo(
+    () =>
+      Object.keys(customCategories)
+        .filter((k) => k.startsWith('#'))
+        .map((k) => k.slice(1)),
+    [customCategories]
+  );
+
   const categoryList = useMemo(() => {
     const extra = Object.keys(counts).filter(
       (c) => c !== '전체' && c !== CAFE && !CATEGORIES.includes(c) && counts[c] > 0
     );
-    return [...CATEGORIES, ...extra].filter((c) => !hidden[categoryKey(c)]);
-  }, [counts, hidden]);
+    const all = [...CATEGORIES, ...extra, ...createdCategories];
+    return [...new Set(all)].filter((c) => !hidden[categoryKey(c)]);
+  }, [counts, createdCategories, hidden]);
 
   /* 상세 패널의 분류 선택 목록 — cafe On 도 이동 대상에 포함 */
   const pickerCategories = useMemo(() => [...categoryList, CAFE], [categoryList]);
@@ -362,6 +372,7 @@ export default function App() {
         onCategory={setCategory}
         categories={categoryList}
         onDeleteCategory={deleteCategory}
+        onCreateCategory={createCategory}
         hasHiddenCategories={hasHiddenCategories}
         onRestoreCategories={restoreCategories}
         counts={counts}

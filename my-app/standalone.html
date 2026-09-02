@@ -1421,13 +1421,29 @@
         [showToast]
       );
 
+      /**
+       * 소속 아이콘이 없는 빈 분류 만들기.
+       * 분류는 원래 "아이콘이 가리키는 값"이라 아이콘이 0개면 존재할 수 없다.
+       * 그래서 "#분류명" 키로 만들어 둔 사실 자체를 기록한다 — 아이콘 이름은 영문
+       * 소문자·숫자·하이픈, 이미지 아이콘은 "@파일명" 이라 절대 겹치지 않는다.
+       */
+      const createCategory = useCallback(
+        (name) => {
+          const label = String(name).trim();
+          if (!label) return;
+          setCustomCategories((prev) => ({ ...prev, [categoryKey(label)]: label }));
+          showToast(`‘${label}’ 분류를 만들었습니다`);
+        },
+        [showToast]
+      );
+
       /** 이름을 바꾼 뒤 남은 옛 키를 정리한다 */
       const dropCategory = useCallback(
         (key) => setCustomCategories((prev) => withoutKey(prev, key)),
         []
       );
 
-      return { customCategories, moveCategory, resetCategory, dropCategory };
+      return { customCategories, moveCategory, resetCategory, dropCategory, createCategory };
     }
 
     /* ───── src/components/Icon.jsx ───── */
@@ -2472,6 +2488,9 @@
     }
 
     /* ───── src/components/Toolbar.jsx ───── */
+    /** 분류 이름으로 쓸 수 없는 예약어 — 필터 자체를 뜻하는 칩들 */
+    const RESERVED_CATEGORIES = ['전체', CAFE, HIDDEN];
+
     /**
      * 검색 · 크기/두께/색상 조절 · 분류 필터
      * 상태는 App 이 들고 있고 여기서는 표시와 입력만 담당한다.
@@ -2499,10 +2518,23 @@
       onAddSvg,
       hiddenCount,
       onDeleteCategory,
+      onCreateCategory,
       hasHiddenCategories,
       onRestoreCategories,
     }) {
       const fileRef = useRef(null);
+      const [newCategory, setNewCategory] = useState(null); // null = 입력창 닫힘
+
+      const draft = (newCategory || '').trim();
+      const duplicate = !!draft && (categories.includes(draft) || RESERVED_CATEGORIES.includes(draft));
+      const canCreate = !!draft && !duplicate;
+
+      const submitCategory = (e) => {
+        e.preventDefault();
+        if (!canCreate) return;
+        onCreateCategory(draft);
+        setNewCategory(null);
+      };
 
       return (
         <div className="toolbar">
@@ -2640,6 +2672,37 @@
                 <Icon name="plus" size={13} />
                 SVG 아이콘 추가
               </button>
+
+              {newCategory === null ? (
+                <button
+                  className="chip add"
+                  onClick={() => setNewCategory('')}
+                  title="소속 아이콘이 없어도 분류 칩을 만들어 둘 수 있습니다"
+                >
+                  <Icon name="plus" size={13} />
+                  분류 추가
+                </button>
+              ) : (
+                <form className="chip-form" onSubmit={submitCategory}>
+                  <input
+                    autoFocus
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Escape' && setNewCategory(null)}
+                    placeholder="새 분류 이름"
+                    aria-label="새 분류 이름"
+                    aria-invalid={duplicate}
+                  />
+                  <button type="submit" className="chip add" disabled={!canCreate}>
+                    <Icon name="check" size={13} />
+                    만들기
+                  </button>
+                  <button type="button" className="chip" onClick={() => setNewCategory(null)}>
+                    취소
+                  </button>
+                  {duplicate && <span className="chip-form-error">이미 있는 분류입니다</span>}
+                </form>
+              )}
 
               {hiddenCount > 0 && (
                 <button
@@ -3146,7 +3209,7 @@
       const [theme, toggleTheme] = useTheme();
       const [toast, showToast] = useToast();
       const { customTags, addTags, removeTag, dropTags } = useCustomTags(showToast);
-      const { customCategories, moveCategory, resetCategory, dropCategory } =
+      const { customCategories, moveCategory, resetCategory, dropCategory, createCategory } =
         useCustomCategories(showToast);
       const { customIcons, addIcon, removeIcon } = useCustomIcons(showToast);
       const { hidden, hide, restore, restoreAll, hideCategory, restoreCategories } =
@@ -3406,12 +3469,22 @@
        * 소속된 아이콘이 하나도 없는 분류는 빼서 빈 칩이 남지 않게 한다
        * (마지막 아이콘을 다른 곳으로 옮기면 그 분류는 자동으로 사라진다)
        */
+      /** 툴바에서 직접 만든 분류 — 소속 아이콘이 없어도 칩으로 남는다 */
+      const createdCategories = useMemo(
+        () =>
+          Object.keys(customCategories)
+            .filter((k) => k.startsWith('#'))
+            .map((k) => k.slice(1)),
+        [customCategories]
+      );
+
       const categoryList = useMemo(() => {
         const extra = Object.keys(counts).filter(
           (c) => c !== '전체' && c !== CAFE && !CATEGORIES.includes(c) && counts[c] > 0
         );
-        return [...CATEGORIES, ...extra].filter((c) => !hidden[categoryKey(c)]);
-      }, [counts, hidden]);
+        const all = [...CATEGORIES, ...extra, ...createdCategories];
+        return [...new Set(all)].filter((c) => !hidden[categoryKey(c)]);
+      }, [counts, createdCategories, hidden]);
 
       /* 상세 패널의 분류 선택 목록 — cafe On 도 이동 대상에 포함 */
       const pickerCategories = useMemo(() => [...categoryList, CAFE], [categoryList]);
@@ -3469,6 +3542,7 @@
             onCategory={setCategory}
             categories={categoryList}
             onDeleteCategory={deleteCategory}
+            onCreateCategory={createCategory}
             hasHiddenCategories={hasHiddenCategories}
             onRestoreCategories={restoreCategories}
             counts={counts}

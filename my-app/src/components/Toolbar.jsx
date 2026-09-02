@@ -1,6 +1,9 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import Icon from './Icon';
 import { CAFE, FALLBACK_CATEGORY, HIDDEN, SWATCHES } from '../app/constants';
+
+/** 분류 이름으로 쓸 수 없는 예약어 — 필터 자체를 뜻하는 칩들 */
+const RESERVED_CATEGORIES = ['전체', CAFE, HIDDEN];
 
 /**
  * 검색 · 크기/두께/색상 조절 · 분류 필터
@@ -29,10 +32,23 @@ export default function Toolbar({
   onAddSvg,
   hiddenCount,
   onDeleteCategory,
+  onCreateCategory,
   hasHiddenCategories,
   onRestoreCategories,
 }) {
   const fileRef = useRef(null);
+  const [newCategory, setNewCategory] = useState(null); // null = 입력창 닫힘
+
+  const draft = (newCategory || '').trim();
+  const duplicate = !!draft && (categories.includes(draft) || RESERVED_CATEGORIES.includes(draft));
+  const canCreate = !!draft && !duplicate;
+
+  const submitCategory = (e) => {
+    e.preventDefault();
+    if (!canCreate) return;
+    onCreateCategory(draft);
+    setNewCategory(null);
+  };
 
   return (
     <div className="toolbar">
@@ -170,6 +186,37 @@ export default function Toolbar({
             <Icon name="plus" size={13} />
             SVG 아이콘 추가
           </button>
+
+          {newCategory === null ? (
+            <button
+              className="chip add"
+              onClick={() => setNewCategory('')}
+              title="소속 아이콘이 없어도 분류 칩을 만들어 둘 수 있습니다"
+            >
+              <Icon name="plus" size={13} />
+              분류 추가
+            </button>
+          ) : (
+            <form className="chip-form" onSubmit={submitCategory}>
+              <input
+                autoFocus
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                onKeyDown={(e) => e.key === 'Escape' && setNewCategory(null)}
+                placeholder="새 분류 이름"
+                aria-label="새 분류 이름"
+                aria-invalid={duplicate}
+              />
+              <button type="submit" className="chip add" disabled={!canCreate}>
+                <Icon name="check" size={13} />
+                만들기
+              </button>
+              <button type="button" className="chip" onClick={() => setNewCategory(null)}>
+                취소
+              </button>
+              {duplicate && <span className="chip-form-error">이미 있는 분류입니다</span>}
+            </form>
+          )}
 
           {hiddenCount > 0 && (
             <button
